@@ -5,8 +5,11 @@
          syntax-warn
          syntax-warnings-property-key
          syntax-warnings
-         check-syntax-warnings
-         expand-and-check-module)
+         check-syntax-warnings)
+
+(require typed/racket/unsafe)
+
+(unsafe-provide expand-and-check-module)
 
 (require racket/list
          racket/stxparam
@@ -40,7 +43,7 @@
 (: syntax-warnings-property-key Any)
 (define syntax-warnings-property-key 'warnings)
 
-(: syntax-warnings (-> Syntax (Listof Syntax-Warning)))
+(: syntax-warnings (-> (Syntaxof Any) (Listof Syntax-Warning)))
 (define (syntax-warnings stx)
   (define datum (syntax-e stx))
   ((inst append Syntax-Warning)
@@ -48,7 +51,7 @@
              (Option (Listof Syntax-Warning)))
        '())
    (if (list? datum)
-       ((inst append-map Syntax-Warning Syntax) syntax-warnings (filter syntax? datum))
+       ((inst append-map Syntax-Warning (Syntaxof Any)) syntax-warnings (filter syntax? datum))
        '())))
 
 (module+ test

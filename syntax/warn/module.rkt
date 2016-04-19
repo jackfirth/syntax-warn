@@ -1,11 +1,12 @@
-#lang typed/racket/base
+#lang racket/base
 
 (provide warned-module-begin
          module-begin/warn)
 
-(require (for-syntax syntax/parse
+(require racket/stxparam
+         (for-syntax syntax/parse
                      syntax/warn
-                     typed/racket/base))
+                     racket/base))
 
 
 (define-syntax-parameter warned-module-begin
