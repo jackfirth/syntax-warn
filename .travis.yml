@@ -5,14 +5,6 @@ env:
     - RACKET_DIR=~/racket
     - VERSION_TO_COVER="6.4"
   matrix:
-    - RACKET_VERSION="6.1.1"
-      CATALOG_VERSION="6.1.1"
-    - RACKET_VERSION="6.2"
-      CATALOG_VERSION="6.2"
-    - RACKET_VERSION="6.2.1"
-      CATALOG_VERSION="6.2.1"
-    - RACKET_VERSION="6.3"
-      CATALOG_VERSION="6.3"
     - RACKET_VERSION="6.4"
       CATALOG_VERSION="6.4"
     - RACKET_VERSION="HEAD"
