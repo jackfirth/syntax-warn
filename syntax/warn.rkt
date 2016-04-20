@@ -11,18 +11,24 @@
 
 (unsafe-provide expand-and-check-module)
 
-(require racket/list
+(require "warn/private/rackunit-port.rkt"
+         "warn/private/string-pad.rkt"
+         racket/list
+         racket/function
          racket/stxparam
          (rename-in (only-in racket/base #%module-begin)
                     [#%module-begin base-module-begin])
          (for-syntax typed/racket/base
                      syntax/parse))
 
+(require/typed racket/string
+               [string-contains? (-> String String Boolean)])
+
 (module+ test
   (require typed/rackunit))
 
 
-(: syntax-srcloc (-> Syntax Srcloc))
+(: syntax-srcloc (-> (Syntaxof Any) Srcloc))
 (define (syntax-srcloc stx)
   (make-srcloc (syntax-source stx)
                (syntax-line stx)
@@ -64,8 +70,30 @@
                 (list (syntax-warning (syntax-srcloc warned-once-stx) second-message)
                       (syntax-warning (syntax-srcloc orig-stx) first-message))))
 
+(: srcloc-location-string (-> Srcloc String))
+(define (srcloc-location-string srcloc)
+  (format "~a:~a:~a"
+          (srcloc-source srcloc)
+          (srcloc-line srcloc)
+          (srcloc-column srcloc)))
+
 (: check-syntax-warnings (-> (Syntaxof Any) Void))
-(define (check-syntax-warnings stx) (void))
+(define (check-syntax-warnings stx)
+  (define warnings (syntax-warnings stx))
+  (define max-location-string-length
+    (apply max
+           (map (compose (compose string-length srcloc-location-string)
+                         syntax-warning-location)
+                warnings)))
+  (for ([warning (in-list (syntax-warnings stx))])
+    (define location-string (srcloc-location-string (syntax-warning-location warning)))
+    (eprintf "~a ~a"
+             (string-pad-right location-string #\space max-location-string-length)
+             (syntax-warning-message warning))))
+
+(module+ test
+  (check-error-output-contains? "not there"
+    (thunk (check-syntax-warnings (syntax-warn #'here "not there")))))
 
 (: expand-and-check-module (-> (Syntaxof Any) (Syntaxof Any)))
 (define (expand-and-check-module stx)
