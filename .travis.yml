@@ -31,7 +31,7 @@ after_success:
   - rm -rf out || exit 0;
   - mkdir out;
   - echo "In out dir"
-  - sribble --dest out --dest-name index syntax/warn.scrbl
+  - raco sribble --dest out --dest-name index syntax/warn.scrbl
   - cd out
   - git init
   - git config user.name "Travis CI"
