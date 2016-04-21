@@ -31,6 +31,7 @@ after_success:
   - rm -rf out || exit 0;
   - mkdir out;
   - echo "In out dir"
+  - raco pkg install scribble
   - raco sribble --dest out --dest-name index syntax/warn.scrbl
   - cd out
   - git init
@@ -38,4 +39,4 @@ after_success:
   - git config user.email "jackhfirth@gmail.com"
   - git add .
   - git commit -m "Deploy to GitHub Pages"
-  - git push --force --quiet "https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git" gh-pages > /dev/null
+  - git push --force --quiet "https://${GH_TOKEN}@github.com/jackfirth/syntax-warn.git" master:gh-pages > /dev/null
