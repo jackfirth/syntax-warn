@@ -24,8 +24,19 @@ install:
 script:
   - raco test $TRAVIS_BUILD_DIR
   - if [ "${DEPLOY_VERSION}" == "${RACKET_VERSION}" ]; then raco cover -f coveralls -d $TRAVIS_BUILD_DIR/coverage .; fi
-deploy:
-  provider: script
-  script: deploy-docs.sh
-  on:
-    branch: master
+after_success:
+  - echo "Starting deploy"
+  - if [ "${DEPLOY_VERSION}" != "${RACKET_VERSION}" ]; then exit 0; fi
+  - if [ "${TRAVIS_BRANCH}" != "master" ]; then exit 0; fi
+  - if [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then exit 0; fi
+  - rm -rf out || exit 0;
+  - mkdir out;
+  - echo "In out dir"
+  - sribble --dest out --dest-name index syntax/warn.scrbl
+  - cd out
+  - git init
+  - git config user.name "Travis CI"
+  - git config user.email "jackhfirth@gmail.com"
+  - git add .
+  - git commit -m "Deploy to GitHub Pages"
+  - git push --force --quiet "https://${GH_TOKEN}@${GH_REF}" master:gh-pages > /dev/null 2>&1
