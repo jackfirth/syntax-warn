@@ -3,7 +3,7 @@ sudo: false
 env:
   global:
     - RACKET_DIR=~/racket
-    - VERSION_TO_COVER="6.4"
+    - DEPLOY_VERSION="6.4"
     - secure: >-
         miqhrKMgZNIRQ5nZDEBGzqGMqeY3dEMCCpoLNDD1GOX1kogit3Z9ab1g47rVQnhqpExckU9272njSmguDgy5uO2G0IU20ZNz9wEFbwsu9QCkD1nDtWVj6YwCcyHB6xOfzd+GtegHQckfHN08Z3AzKby/6Ko9wEK71HeTQ0Ef/y+vEtEypO0ED8TVgy86SMv7GY+5jw8nXDMs3FW6lsclSuvc5YveKJ9+gzCQpdx0PmaIryHIOz0RD7A+QwvGwbVCeGvNVDC9k8kpnVbkXP+XQInoeEFg/4vG8/nWrAogQUQXbCNDEZCqVmtjJdEopK4yrU7wxOc+AJK9wUkCchsnttGKrNKTY4QcF8EI/16cxafPS7y51D8UJ0zV9b55/x1yNImmK/uuc6cefLA62y++KRdconELm5TJC250PL8Ucy1X3yrbzhyVa4WMTIqkXHg6062F2fawUbPtByfzlfKmFeC69j8uCVYEEJQzeud/i0aaCxVNBq9IAWzlgwzV6ZxsoGTHMcQPefZ2Uuwz3wU+DrtpHAHEfaNMjbcrRLfQSDGmNe/oiYNZKxUGaODowzaF0cU6eJ8s15m+rCOk3Kf9qjfAhL2BMzuDaRRxC9ilfsEMR/sywA0IuvWEB03BWZmI2pFU/vtlSdk+6+1KMyOGDvmgywNKx5sOhKnovnL9hpQ=
   matrix:
@@ -25,15 +25,20 @@ before_install:
     raco pkg config --set catalogs $VERSION_SPECIFIC_CATALOG
     http://pkgs.racket-lang.org http://planet-compats.racket-lang.org
   - >-
-    if [ "${VERSION_TO_COVER}" == "${RACKET_VERSION}" ]; then raco pkg install
+    if [ "${DEPLOY_VERSION}" == "${RACKET_VERSION}" ]; then raco pkg install
     --deps search-auto cover; fi
   - >-
-    if [ "${VERSION_TO_COVER}" == "${RACKET_VERSION}" ]; then raco pkg install
+    if [ "${DEPLOY_VERSION}" == "${RACKET_VERSION}" ]; then raco pkg install
     --deps search-auto cover-coveralls; fi
 install:
   - raco pkg install --auto $TRAVIS_BUILD_DIR
 script:
   - raco test $TRAVIS_BUILD_DIR
   - >-
-    if [ "${VERSION_TO_COVER}" == "${RACKET_VERSION}" ]; then raco cover -f
+    if [ "${DEPLOY_VERSION}" == "${RACKET_VERSION}" ]; then raco cover -f
     coveralls -d $TRAVIS_BUILD_DIR/coverage .; fi
+deploy:
+  provider: script
+  script: deploy-docs.sh
+  on:
+  	branch: develop
