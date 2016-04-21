@@ -28,4 +28,4 @@ deploy:
   provider: script
   script: deploy-docs.sh
   on:
-  	branch: master
+    branch: master
