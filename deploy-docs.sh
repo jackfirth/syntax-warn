@@ -1,12 +1,16 @@
 #!/bin/bash
 set -e # exit with nonzero exit code if anything fails
 
+echo "Starting deploy"
+
 # Travis may run multiple jobs, we should only deploy on the deploy version
 if [ "${DEPLOY_VERSION}" != "${RACKET_VERSION}" ]; then exit 0; fi
 
 # clear and re-create the out directory
 rm -rf out || exit 0;
 mkdir out;
+
+echo "In out dir"
 
 # run our compile script, discussed above
 ./compile-docs.sh
