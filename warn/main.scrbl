@@ -9,12 +9,12 @@
 @(define-syntax-rule (document-syntax-property-key id pre-flow ...)
    (defform #:kind "syntax property key" #:id id id pre-flow ...))
 @(define-syntax-rule (syntax-warn-examples example ...)
-   (examples #:eval (make-base-eval #:lang 'typed/racket/base '(require syntax/warn)) example ...))
+   (examples #:eval (make-base-eval #:lang 'typed/racket/base '(require warn)) example ...))
 @(define-syntax-rule (document-syntax-parameter id pre-flow ...)
    (defform #:kind "syntax parameter" #:id id id pre-flow ...))
 
 @title{Syntax Warnings}
-@defmodule[syntax/warn]
+@defmodule[warn]
 @author[@author+email["Jack Firth" "jackhfirth@gmail.com"]]
 
 This library provides forms for working with @warn-tech{syntax warnings}. Library

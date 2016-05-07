@@ -4,6 +4,7 @@ env:
   global:
     - RACKET_DIR=~/racket
     - DEPLOY_VERSION="6.4"
+    - SCRIBBLE_ENTRYPOINT_FILE="warn/main.scrbl"
   matrix:
     - RACKET_VERSION="6.4" CATALOG_VERSION="6.4"
     - RACKET_VERSION="HEAD" CATALOG_VERSION="6.4"
@@ -31,7 +32,7 @@ after_success:
   - rm -rf out || exit 0;
   - mkdir out;
   - echo "In out dir"
-  - raco scribble +m --dest out --dest-name index --redirect-main "https://docs.racket-lang.org/" syntax/warn.scrbl
+  - raco scribble +m --dest out --dest-name index --redirect-main "https://docs.racket-lang.org/" ${SCRIBBLE_ENTRYPOINT_FILE}
   - cd out
   - git init
   - git config user.name "Travis CI"
