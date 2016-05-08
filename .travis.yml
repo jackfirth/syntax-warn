@@ -3,14 +3,15 @@ sudo: false
 env:
   global:
     - RACKET_DIR=~/racket
-    - DEPLOY_VERSION="6.4"
+    - DEPLOY_VERSION="6.5"
     - SCRIBBLE_ENTRYPOINT_FILE="warn/main.scrbl"
   matrix:
     - RACKET_VERSION="6.4" CATALOG_VERSION="6.4"
-    - RACKET_VERSION="HEAD" CATALOG_VERSION="6.4"
+    - RACKET_VERSION="6.5" CATALOG_VERSION="6.5"
+    - RACKET_VERSION="HEAD" CATALOG_VERSION="6.5"
 matrix:
   allow_failures:
-    - env: RACKET_VERSION="HEAD" CATALOG_VERSION="6.4"
+    - env: RACKET_VERSION="HEAD" CATALOG_VERSION="6.5"
 before_install:
   - git clone https://github.com/greghendershott/travis-racket.git ../travis-racket
   - cat ../travis-racket/install-racket.sh | bash
