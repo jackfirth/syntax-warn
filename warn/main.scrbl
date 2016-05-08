@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require warn scribble/examples (for-label racket/base racket/stxparam))
+@(require scribble/examples (for-label warn racket/base racket/stxparam racket/contract racket/function))
 
 @(define (warn-tech . pre-content)
    (apply tech #:key "syntax-warning" #:normalize? #f pre-content))
@@ -31,26 +31,40 @@ cause subtle bugs, and so on. Syntax warnings are first class values attached to
 source code at compile time through syntax properties, and can be inspected by
 other code and tools.
 
-@defstruct*[syntax-warning ([location srcloc?] [message string?]) #:transparent]{
- Structure representing a syntax warning. Syntax warnings contain a source location
- identifying the source of the warning and a human-readable message describing the
- warning.
+@defstruct*[syntax-warning
+            ([location srcloc?] [message string?] [fix suggested-fix?])
+            #:transparent]{
+ Structure representing a @warn-tech{syntax warning}. Syntax warnings contain a
+ source location identifying the source of the warning and a human-readable message
+ describing the warning.
+}
+
+@defstruct*[suggested-fix
+            ([original-stx syntax?] [replacement-stx syntax?])
+            #:transparent]{
+ Structure representing a way to fix a @warn-tech{syntax warning}. By replacing
+ the content at @racket[original-stx]'s source location with the content of
+ @racket[replacement-stx], the warning this fix was attached to will be resolved.
 }
 
 @section{Attaching warnings to syntax}
 
-@defproc[(syntax-warn [stx syntax?] [message string?]) syntax?]{
- Returns a syntax object equivalent to @racket[stx] with a @racket[syntax-warning]
+@defproc[(syntax-warn [stx syntax?]
+                      [message string?]
+                      [#:fix replacement-stx (or/c syntax? #f) #f])
+         syntax?]{
+ Returns a syntax object equivalent to @racket[stx] with a @warn-tech{syntax warning}
  attached. The warning points to @racket[stx] as its source and has @racket[message]
- as its message. The warning is added under the @racket[syntax-warning-property-key]
- syntax property.
+ as its message. If @racket[replacement-stx] is not @racket[#f], the warning suggests
+ replacing @racket[stx] with @racket[replacement-stx]. The warning is added under the
+ @racket[syntax-warning-property-key] syntax property.
  @syntax-warn-examples[
  (syntax-warn #'(lambda (lambda) lambda)
               "Shadowing the language defined identifier \"lambda\" is discouraged")
  ]}
 
 @document-syntax-property-key[syntax-warnings-property-key]{
- A value used as the @racket[syntax-property] key that @racket[syntax-warning]s
+ A value used as the @racket[syntax-property] key that @warn-tech{syntax-warnings}
  are attached to. This value is not guaranteed to remain constant across package
  versions.
  @syntax-warn-examples[syntax-warnings-property-key]}
@@ -63,7 +77,8 @@ other code and tools.
   (syntax-warn
    (syntax-warn #'(lambda (lambda) lambda)
                 "Shadowing the language defined identifier \"lambda\" is discouraged")
-   "This function is identicial to the built in \"identity\" procedure"))
+   "This function is identicial to the built in \"identity\" procedure"
+   #:fix #'identity))
  ]}
 
 @section{Checking warnings}
@@ -73,8 +88,11 @@ other code and tools.
  them to @racket[current-error-port].
  @syntax-warn-examples[
  (check-syntax-warnings
-  (syntax-warn #'(lambda (lambda) lambda)
-               "Shadowing the language defined identifier \"lambda\" is discouraged"))
+  (syntax-warn
+   (syntax-warn #'(lambda (lambda) lambda)
+                "Shadowing the language defined identifier \"lambda\" is discouraged")
+   "This function is identicial to the built in \"identity\" procedure"
+   #:fix #'identity))
  ]}
 
 @document-syntax-parameter[warned-module-begin]{

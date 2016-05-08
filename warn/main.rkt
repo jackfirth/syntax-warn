@@ -1,6 +1,7 @@
 #lang racket/base
 
-(provide (struct-out syntax-warning)
+(provide (struct-out suggested-fix)
+         (struct-out syntax-warning)
          syntax-warn
          syntax-warnings-property-key
          syntax-warnings
@@ -29,13 +30,14 @@
                (syntax-position stx)
                (syntax-span stx)))
 
-(struct syntax-warning (location message)
-  #:transparent)
+(struct suggested-fix (original-stx replacement-stx) #:transparent)
+(struct syntax-warning (location message fix) #:transparent)
 
-(define (syntax-warn stx message)
+(define (syntax-warn stx message #:fix [replacement-stx #f])
+  (define fix (and replacement-stx (suggested-fix stx replacement-stx)))
+  (define warning (syntax-warning (syntax-srcloc stx) message fix))
   (syntax-property stx syntax-warnings-property-key
-                   (cons (syntax-warning (syntax-srcloc stx) message)
-                         (or (syntax-property stx syntax-warnings-property-key) '()))))
+                   (cons warning (or (syntax-property stx syntax-warnings-property-key) '()))))
 
 (define syntax-warnings-property-key 'warnings)
 
@@ -49,14 +51,21 @@
        '())))
 
 (module+ test
-  (define orig-stx #'(lambda lambda lambda))
+  (define orig-stx #'(lambda (lambda) lambda))
   (define first-message "Shadowing the language defined identifier \"lambda\" is discouraged")
   (define warned-once-stx
     (syntax-warn orig-stx first-message))
+  (define expected-first-warning (syntax-warning (syntax-srcloc orig-stx) first-message #f))
+  (check-equal? (syntax-warnings warned-once-stx) (list expected-first-warning))
   (define second-message "This function is identicial to the built in \"identity\" procedure")
-  (check-equal? (syntax-warnings (syntax-warn warned-once-stx second-message))
-                (list (syntax-warning (syntax-srcloc warned-once-stx) second-message)
-                      (syntax-warning (syntax-srcloc orig-stx) first-message))))
+  (define identity-stx #'identity)
+  (define warned-twice-stx
+    (syntax-warn warned-once-stx second-message #:fix identity-stx))
+  (define expected-second-warning (syntax-warning (syntax-srcloc warned-once-stx)
+                                                  second-message
+                                                  (suggested-fix warned-once-stx identity-stx)))
+  (check-equal? (syntax-warnings warned-twice-stx)
+                (list expected-second-warning expected-first-warning)))
 
 (define (srcloc-location-string srcloc)
   (format "~a:~a:~a"
@@ -73,7 +82,7 @@
                 warnings)))
   (for ([warning (in-list (syntax-warnings stx))])
     (define location-string (srcloc-location-string (syntax-warning-location warning)))
-    (eprintf "~a ~a"
+    (eprintf "~a ~a\n"
              (string-pad-right location-string #\space max-location-string-length)
              (syntax-warning-message warning))))
 
