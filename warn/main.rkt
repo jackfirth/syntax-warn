@@ -9,8 +9,11 @@
          expand-and-check-module)
 
 (require "private/rackunit-port.rkt"
+         "private/rackunit-string.rkt"
+         "private/string-lines.rkt"
          "private/string-pad.rkt"
          racket/list
+         racket/format
          racket/function
          racket/string
          racket/stxparam
@@ -73,6 +76,52 @@
           (srcloc-line srcloc)
           (srcloc-column srcloc)))
 
+(define (separator-format sep width)
+  (define separator (make-string width sep))
+  (string-append-lines separator "~a" separator ""))
+
+(define (format-warning warning #:separator-char [sep #\-] #:separator-width [width 80])
+  (define warning-message
+    (format "~a ~a"
+            (srcloc-location-string (syntax-warning-location warning))
+            (syntax-warning-message warning)))
+  (define fix (syntax-warning-fix warning))
+  (define message-format
+    (if fix
+        (separator-format sep width)
+        "~a\n"))
+  (define (indent str) (string-append "  " str))
+  (format message-format
+          (if fix
+              (string-append-lines
+               warning-message
+               "suggested fix"
+               ""
+               (indent (~a (syntax->datum (suggested-fix-original-stx fix))))
+               ""
+               "->"
+               ""
+               (indent (~a (syntax->datum (suggested-fix-replacement-stx fix)))))
+              warning-message)))
+
+(module+ test
+  (define formatted-warning
+    (format-warning (syntax-warning (syntax-srcloc #'here) "not there" #f)))
+  (check-string-contains? formatted-warning "warn/main.rkt")
+  (check-string-contains? formatted-warning "not there")
+  (check-string-has-trailing-newline? formatted-warning)
+  (define formatted-warning/fix
+    (format-warning (syntax-warning (syntax-srcloc #'foo) "use a different name"
+                                    (suggested-fix #'foo #'bar))))
+  (check-string-contains-all? formatted-warning/fix
+                              '("----------------"
+                                "warn/main.rkt"
+                                "use a different name"
+                                "suggested fix"
+                                "foo"
+                                "->"
+                                "bar")))
+
 (define (check-syntax-warnings stx)
   (define warnings (syntax-warnings stx))
   (define max-location-string-length
@@ -81,14 +130,11 @@
                          syntax-warning-location)
                 warnings)))
   (for ([warning (in-list (syntax-warnings stx))])
-    (define location-string (srcloc-location-string (syntax-warning-location warning)))
-    (eprintf "~a ~a\n"
-             (string-pad-right location-string #\space max-location-string-length)
-             (syntax-warning-message warning))))
+    (eprintf (format-warning warning))))
 
 (module+ test
   (check-error-output-contains? "not there"
-    (thunk (check-syntax-warnings (syntax-warn #'here "not there")))))
+                                (thunk (check-syntax-warnings (syntax-warn #'here "not there")))))
 
 (define (expand-and-check-module stx)
   (define result-stx
