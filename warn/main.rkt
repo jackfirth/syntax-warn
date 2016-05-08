@@ -95,7 +95,7 @@
           (if fix
               (string-append-lines
                warning-message
-               "suggested fix"
+               "suggested fix:"
                ""
                (indent (~a (syntax->datum (suggested-fix-original-stx fix))))
                ""
@@ -117,7 +117,7 @@
                               '("----------------"
                                 "warn/main.rkt"
                                 "use a different name"
-                                "suggested fix"
+                                "suggested fix:"
                                 "foo"
                                 "->"
                                 "bar")))
