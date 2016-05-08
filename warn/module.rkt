@@ -5,7 +5,7 @@
 
 (require racket/stxparam
          (for-syntax syntax/parse
-                     syntax/warn
+                     warn
                      racket/base))
 
 

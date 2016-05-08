@@ -1,13 +1,13 @@
 #lang scribble/manual
 
-@(require warn scribble/examples (for-label racket/base))
+@(require warn scribble/examples (for-label racket/base racket/stxparam))
 
 @(define (warn-tech . pre-content)
    (apply tech #:key "syntax-warning" #:normalize? #f pre-content))
 @(define-syntax-rule (document-syntax-property-key id pre-flow ...)
    (defform #:kind "syntax property key" #:id id id pre-flow ...))
 @(define-syntax-rule (syntax-warn-examples example ...)
-   (examples #:eval (make-base-eval #:lang 'typed/racket/base '(require warn)) example ...))
+   (examples #:eval (make-base-eval #:lang 'racket/base '(require warn)) example ...))
 @(define-syntax-rule (document-syntax-parameter id pre-flow ...)
    (defform #:kind "syntax parameter" #:id id id pre-flow ...))
 
