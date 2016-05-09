@@ -8,14 +8,6 @@
                      syntax/parse
                      warn/require))
 
-(define-syntax (require/warn stx)
-  (syntax-parse stx
-    [(_ spec ...)
-     (require-syntax-warn #'(require spec ...)
-                          (syntax->list #'(spec ...))
-                          #:bad-stx stx
-                          #:require-id #'require/warn)]))
-
 (define-syntax (require/warn/shadow stx)
   (syntax-parse stx
     [(_ spec ...)
