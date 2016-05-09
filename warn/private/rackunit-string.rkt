@@ -19,7 +19,6 @@
   (define (contains? expected) (string-contains? str expected))
   (define-values (contained not-contained) (partition contains? expecteds))
   (with-check-info (['string str]
-                    ['contained contained]
                     ['not-contained not-contained])
     (unless (empty? not-contained)
       (fail-check))))

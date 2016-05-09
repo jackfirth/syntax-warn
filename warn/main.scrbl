@@ -51,12 +51,14 @@ other code and tools.
 
 @defproc[(syntax-warn [stx syntax?]
                       [message string?]
-                      [#:fix replacement-stx (or/c syntax? #f) #f])
+                      [#:fix replacement-stx (or/c syntax? #f) #f]
+                      [#:bad-stx bad-stx syntax? stx])
          syntax?]{
  Returns a syntax object equivalent to @racket[stx] with a @warn-tech{syntax warning}
- attached. The warning points to @racket[stx] as its source and has @racket[message]
- as its message. If @racket[replacement-stx] is not @racket[#f], the warning suggests
- replacing @racket[stx] with @racket[replacement-stx]. The warning is added under the
+ attached. The warning points to @racket[bad-stx] as its source, which defaults to
+ @racket[stx] if not provided. The warning has @racket[message] as its message.
+ If @racket[replacement-stx] is not @racket[#f], the warning suggests replacing
+ @racket[bad-stx] with @racket[replacement-stx]. The warning is added under the
  @racket[syntax-warning-property-key] syntax property.
  @syntax-warn-examples[
  (syntax-warn #'(lambda (lambda) lambda)

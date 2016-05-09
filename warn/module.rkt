@@ -10,7 +10,7 @@
 
 
 (define-syntax-parameter warned-module-begin
-  (make-rename-transformer #'base-module-begin))
+  (make-rename-transformer #'#%module-begin))
 
 (define-syntax (module-begin/warn stx)
   (syntax-parse stx

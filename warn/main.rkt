@@ -11,16 +11,12 @@
 (require "private/rackunit-port.rkt"
          "private/rackunit-string.rkt"
          "private/string-lines.rkt"
-         "private/string-pad.rkt"
          racket/list
          racket/format
          racket/function
-         racket/string
-         racket/stxparam
          (rename-in (only-in racket/base #%module-begin)
                     [#%module-begin base-module-begin])
-         (for-syntax racket/base
-                     syntax/parse))
+         (for-syntax racket/base))
 
 (module+ test
   (require rackunit))
@@ -36,9 +32,9 @@
 (struct suggested-fix (original-stx replacement-stx) #:transparent)
 (struct syntax-warning (location message fix) #:transparent)
 
-(define (syntax-warn stx message #:fix [replacement-stx #f])
-  (define fix (and replacement-stx (suggested-fix stx replacement-stx)))
-  (define warning (syntax-warning (syntax-srcloc stx) message fix))
+(define (syntax-warn stx message #:fix [replacement-stx #f] #:bad-stx [bad-stx stx])
+  (define fix (and replacement-stx (suggested-fix bad-stx replacement-stx)))
+  (define warning (syntax-warning (syntax-srcloc bad-stx) message fix))
   (syntax-property stx syntax-warnings-property-key
                    (cons warning (or (syntax-property stx syntax-warnings-property-key) '()))))
 
@@ -46,12 +42,12 @@
 
 (define (syntax-warnings stx)
   (define datum (syntax-e stx))
-  (append
-   (or (syntax-property stx syntax-warnings-property-key)
-       '())
-   (if (list? datum)
-       (append-map syntax-warnings (filter syntax? datum))
-       '())))
+  (remove-duplicates
+   (append
+    (or (syntax-property stx syntax-warnings-property-key) '())
+    (if (list? datum)
+        (append-map syntax-warnings (filter syntax? datum))
+        '()))))
 
 (module+ test
   (define orig-stx #'(lambda (lambda) lambda))
@@ -71,10 +67,9 @@
                 (list expected-second-warning expected-first-warning)))
 
 (define (srcloc-location-string srcloc)
-  (format "~a:~a:~a"
+  (format "~a:~a"
           (srcloc-source srcloc)
-          (srcloc-line srcloc)
-          (srcloc-column srcloc)))
+          (srcloc-line srcloc)))
 
 (define (separator-format sep width)
   (define separator (make-string width sep))
@@ -123,12 +118,6 @@
                                 "bar")))
 
 (define (check-syntax-warnings stx)
-  (define warnings (syntax-warnings stx))
-  (define max-location-string-length
-    (apply max
-           (map (compose (compose string-length srcloc-location-string)
-                         syntax-warning-location)
-                warnings)))
   (for ([warning (in-list (syntax-warnings stx))])
     (eprintf (format-warning warning))))
 
@@ -138,6 +127,6 @@
 
 (define (expand-and-check-module stx)
   (define result-stx
-    (local-expand stx 'module-begin #f))
+    (local-expand stx 'module-begin (list #'module*)))
   (check-syntax-warnings result-stx)
   result-stx)
