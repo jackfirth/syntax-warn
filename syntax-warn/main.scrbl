@@ -108,3 +108,12 @@ other code and tools.
  during expansion. The base @racket[#%module-begin] form used can be changed via
  the @racket[warned-module-begin] syntax parameter.
 }
+
+@section{Fixing warnings}
+
+@defproc[(fix-warning! [fix suggested-fix?]) void?]{
+ Applies @racket[fix] by locating the file that the fix's origin syntax source
+ location points to and replacing that syntax's contents with the suggested fix.
+ Source locations in the suggested replacement syntax are used to determine
+ formatting.
+}

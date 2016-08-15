@@ -1,7 +1,6 @@
 #lang racket/base
 
-(provide require/warn
-         require/warn/shadow)
+(provide require/warn/shadow)
 
 (require racket/stxparam
          (for-syntax racket/base
