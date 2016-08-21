@@ -4,7 +4,7 @@
 
 (require (for-template racket/base)
          syntax/parse
-         warn
+         "main.rkt"
          "private/rackunit-syntax.rkt")
 
 (module+ test
