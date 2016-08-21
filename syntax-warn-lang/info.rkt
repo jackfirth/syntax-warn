@@ -3,3 +3,5 @@
 (define collection "racket")
 (define deps
   '(("base" #:version "6.4") "syntax-warn"))
+(define scribblings
+  '(("base/warn.scrbl" () (library) "warn-lang")))
