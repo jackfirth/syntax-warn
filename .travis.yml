@@ -20,8 +20,8 @@ install:
       $TRAVIS_BUILD_DIR/syntax-warn
       $TRAVIS_BUILD_DIR/syntax-warn-lang
 script:
-  - raco test -c warn racket/base/warn
-  - if [ -n "$RUN_COVER" ]; then raco cover -f coveralls -d $TRAVIS_BUILD_DIR/coverage -c warn racket/base/warn; fi
+  - raco test -c warn racket/base
+  - if [ -n "$RUN_COVER" ]; then raco cover -f coveralls -d $TRAVIS_BUILD_DIR/coverage -c warn racket/base; fi
 after_success:
   - echo "Starting deploy"
   - if [ "${DEPLOY_VERSION}" != "${RACKET_VERSION}" ]; then exit 0; fi
