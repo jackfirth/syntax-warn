@@ -5,7 +5,8 @@
 (require (for-template racket/base)
          syntax/parse
          "main.rkt"
-         "private/rackunit-syntax.rkt")
+         "private/rackunit-syntax.rkt"
+         "private/syntax-format.rkt")
 
 (module+ test
   (require rackunit))
@@ -53,5 +54,9 @@
   (if (equal? require-specs ordered-specs)
       stx
       (syntax-warn stx phase-order-message
-                   #:fix #`(#,require-id #,@ordered-specs)
+                   #:fix (syntax-list->syntax/proc-call-format/newlines
+                          (cons require-id ordered-specs)
+                          #:start-srcloc-stx bad-stx
+                          #:context bad-stx
+                          #:stx-props-stx bad-stx)
                    #:bad-stx bad-stx)))

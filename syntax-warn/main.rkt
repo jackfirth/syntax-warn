@@ -11,6 +11,7 @@
 (require "private/rackunit-port.rkt"
          "private/rackunit-string.rkt"
          "private/string-lines.rkt"
+         "private/syntax-string.rkt"
          racket/list
          racket/format
          racket/function
@@ -92,11 +93,11 @@
                warning-message
                "suggested fix:"
                ""
-               (indent (~a (syntax->datum (suggested-fix-original-stx fix))))
+               (syntax->string (suggested-fix-original-stx fix))
                ""
                "->"
                ""
-               (indent (~a (syntax->datum (suggested-fix-replacement-stx fix)))))
+               (syntax->string (suggested-fix-replacement-stx fix)))
               warning-message)))
 
 (module+ test
