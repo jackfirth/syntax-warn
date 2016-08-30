@@ -1,12 +1,18 @@
 #lang racket/base
 
-(provide require-syntax-warn)
+(require racket/contract/base)
+
+(provide
+ (contract-out
+  [warn-require-phase-order (-> syntax? syntax?)]))
 
 (require (for-template racket/base)
+         racket/match
          syntax/parse
          "main.rkt"
          "private/rackunit-syntax.rkt"
-         "private/syntax-format.rkt")
+         "private/syntax-format.rkt"
+         "private/syntax-srcloc.rkt")
 
 (module+ test
   (require rackunit))
@@ -47,16 +53,54 @@
    "Require specs are not in phase order "
    "(phase order is syntax, template, label, meta, then plain)"))
 
-(define (require-syntax-warn stx require-specs
-                             #:bad-stx [bad-stx stx]
-                             #:require-id [require-id #'require])
-  (define ordered-specs (phase-ordered-specs require-specs))
-  (if (equal? require-specs ordered-specs)
-      stx
-      (syntax-warn stx phase-order-message
-                   #:fix (syntax-list->syntax/proc-call-format/newlines
-                          (cons require-id ordered-specs)
-                          #:start-srcloc-stx bad-stx
-                          #:context bad-stx
-                          #:stx-props-stx bad-stx)
-                   #:bad-stx bad-stx)))
+(define (warn-require-phase-order stx)
+  (syntax-parse stx
+    [(req-id:id clause ...)
+     (define clause-stxs (syntax->list #'(clause ...)))
+     (define clause-stxs/order (phase-ordered-specs clause-stxs))
+     (if (equal? clause-stxs clause-stxs/order)
+         stx
+         (syntax-warn stx phase-order-message
+                      #:fix (build-formatted-phase-ordered-stx stx)))]))
+
+(define (build-formatted-phase-ordered-stx stx)
+  (syntax-parse stx
+    [(req-id:id clause ...)
+     (define clause-stxs (syntax->list #'(clause ...)))
+     (define clause-stxs/order (phase-ordered-specs clause-stxs))
+     (define stxs (cons #'req-id clause-stxs/order))
+     (syntax-list->syntax/srcloc stxs #:parent stx)]))
+
+(define (syntax-reformat stx)
+  (define stxs (syntax->list stx))
+  (if stxs
+      (syntax-set-srcloc/squeeze-to-fit-children
+       (syntax-list->syntax/srcloc stxs #:parent stx))
+      stx))
+
+(define (syntax-list->syntax/srcloc stxs #:parent stx)
+  (match stxs
+    [(list) (datum->syntax stx stxs stx stx)]
+    [(list single)
+     (define single/loc-top
+       (syntax-set-srcloc/first-child single #:parent stx))
+     (define stxs/loc (list (syntax-reformat single/loc-top)))
+     (datum->syntax stx stxs/loc stx stx)]
+    [(list* first second rest)
+     (define first/loc
+       (syntax-reformat
+        (syntax-set-srcloc/first-child first #:parent stx)))
+     (define second/loc
+       (syntax-reformat
+        (syntax-set-srcloc/follow-same-line second #:follow first/loc)))
+     (define-values (rest/loc/reversed _)
+       (for/fold ([rest/loc/reversed '()]
+                  [last-stx second/loc])
+                 ([stx rest])
+         (define stx/loc
+           (syntax-reformat
+            (syntax-set-srcloc/follow-next-line stx #:follow last-stx)))
+         (values (cons stx/loc rest/loc/reversed) stx/loc)))
+     (define stxs/loc
+       (list* first/loc second/loc (reverse rest/loc/reversed)))
+     (datum->syntax stx stxs/loc stx stx)]))

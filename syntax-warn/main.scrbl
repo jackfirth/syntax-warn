@@ -89,12 +89,14 @@ other code and tools.
  Retrieves all @warn-tech{syntax warnings} associated with @racket[stx] and logs
  them to @racket[current-error-port].
  @syntax-warn-examples[
+ (define stx #'(lambda (lambda) lambda))
+ (define replacement-stx (syntax-set-srcloc stx #'identity))
  (check-syntax-warnings
   (syntax-warn
-   (syntax-warn #'(lambda (lambda) lambda)
-                "Shadowing the language defined identifier \"lambda\" is discouraged")
+   (syntax-warn stx
+      "Shadowing the language defined identifier \"lambda\" is discouraged")
    "This function is identicial to the built in \"identity\" procedure"
-   #:fix #'identity))
+   #:fix replacement-stx))
  ]}
 
 @document-syntax-parameter[warned-module-begin]{

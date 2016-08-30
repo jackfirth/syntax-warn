@@ -2,83 +2,94 @@
 
 (require racket/contract)
 
-(provide syntax-list->syntax/proc-call-format/newlines)
+(provide syntax-set-srcloc/follow-same-line
+         syntax-set-srcloc/follow-next-line
+         syntax-set-srcloc/first-child
+         syntax-set-srcloc/squeeze-to-fit-children)
 
-(require racket/list)
-
-(define (syntax-list->syntax/proc-call-format/newlines
-         stxs
-         #:start-srcloc-stx start
-         #:context ctx
-         #:stx-props-stx props)
-  (cond
-    [(empty? stxs)
-     (syntax-set-srcloc #'() start)]
-    [else
-     (define first-srcloc
-       (list (syntax-source start)
-             (syntax-line start)
-             (add1 (syntax-column start))
-             (add1 (syntax-position start))
-             (syntax-span (first stxs))))
-     (define first-stx/loc
-       (syntax-set-srcloc (first stxs) first-srcloc))
-     (cond
-       [(empty? (rest stxs))
-        (define parent-srcloc
-          (list (syntax-source start)
-                (syntax-line start)
-                (syntax-column start)
-                (syntax-position start)
-                (add1 (fifth first-srcloc))))
-        (datum->syntax ctx (list first-stx/loc) parent-srcloc props)]
-       [else
-        (define second-stx/loc
-          (syntax-set-srcloc/follow-same-line (second stxs)
-                                              #:follow first-stx/loc))
-        (define stxs/loc
-          (let loop ([stxs (rest (rest stxs))]
-                     [stxs/loc (list second-stx/loc first-stx/loc)])
-            (cond
-              [(empty? stxs) (reverse stxs/loc)]
-              [else
-               (define next-stx/loc
-                 (syntax-set-srcloc/follow-next-line (first stxs)
-                                                     #:follow (first stxs/loc)))
-               (loop (rest stxs) (cons next-stx/loc stxs/loc))])))
-        (define parent-srcloc
-          (list (syntax-source start)
-                (syntax-line start)
-                (syntax-column start)
-                (syntax-position start)
-                (+ (sum stxs/loc #:measure syntax-span)
-                   (add1 (length stxs/loc)))))
-        (datum->syntax ctx stxs/loc parent-srcloc props)])]))
-
-(define (syntax-set-srcloc stx srcloc)
-  (datum->syntax stx (syntax-e stx) srcloc stx))
+(require racket/list
+         "list.rkt"
+         "syntax-srcloc.rkt")
 
 (define (syntax-set-srcloc/follow-same-line stx #:follow stx-to-follow)
-  (define offset
-    (add1 (syntax-span stx-to-follow)))
-  (define source (syntax-source stx-to-follow))
-  (define line (syntax-line stx-to-follow))
-  (define col (+ (syntax-column stx-to-follow) offset))
-  (define pos (+ (syntax-position stx-to-follow) offset))
-  (define span (syntax-span stx))
-  (syntax-set-srcloc stx (list source line col pos span)))
+  (define follow-loc (syntax-complete-srcloc stx-to-follow))
+  (define loc (syntax-complete-srcloc stx))
+  (define line-span (complete-srcloc-line-span loc))
+  (define new-column (add1 (complete-srcloc-column-end follow-loc)))
+  (define column-delta (- (complete-srcloc-column loc) new-column))
+  (define old-column-end (complete-srcloc-column-end loc))
+  (define new-loc
+    (complete-srcloc #:source (complete-srcloc-source follow-loc)
+                     #:position (add1 (complete-srcloc-position-end follow-loc))
+                     #:position-span (complete-srcloc-position-span loc)
+                     #:line (complete-srcloc-line-end follow-loc)
+                     #:line-span line-span
+                     #:column new-column
+                     #:column-end (if (zero? line-span)
+                                      (+ column-delta old-column-end)
+                                      old-column-end)))
+  (syntax-set-srcloc stx new-loc))
 
 (define (syntax-set-srcloc/follow-next-line stx #:follow stx-to-follow)
-  (define source (syntax-source stx-to-follow))
-  (define line (add1 (syntax-line stx-to-follow)))
-  (define col (syntax-column stx-to-follow))
-  (define pos
-    (+ (syntax-position stx-to-follow)
-       (syntax-span stx-to-follow)
-       col
-       1))
-  (define span (syntax-span stx))
-  (syntax-set-srcloc stx (list source line col pos span)))
+  (define follow-loc (syntax-complete-srcloc stx-to-follow))
+  (define loc (syntax-complete-srcloc stx))
+  (define line-span (complete-srcloc-line-span loc))
+  (define follow-column (complete-srcloc-column follow-loc))
+  (define column-delta (- (complete-srcloc-column loc) follow-column))
+  (define old-column-end (complete-srcloc-column-end loc))
+  (define new-loc
+    (complete-srcloc #:source (complete-srcloc-source follow-loc)
+                     #:position (+ (complete-srcloc-position-end follow-loc)
+                                   follow-column 1)
+                     #:position-span (complete-srcloc-position-span loc)
+                     #:line (add1 (complete-srcloc-line-end follow-loc))
+                     #:line-span line-span
+                     #:column follow-column
+                     #:column-end (if (zero? line-span)
+                                      (+ column-delta old-column-end)
+                                      old-column-end)))
+  (syntax-set-srcloc stx new-loc))
 
-(define (sum vs #:measure [measure-proc values])
-  (foldl + 0 (map measure-proc vs)))
+(define (syntax-set-srcloc/first-child stx #:parent parent-stx)
+  (define parent-loc (syntax-complete-srcloc parent-stx))
+  (define loc (syntax-complete-srcloc stx))
+  (define line-span (complete-srcloc-line-span loc))
+  (define old-column-end (complete-srcloc-column-end loc))
+  (define column-delta (- old-column-end (complete-srcloc-column loc)))
+  (define new-column (add1 (complete-srcloc-column parent-loc)))
+  (define new-loc
+    (complete-srcloc #:source (complete-srcloc-source parent-loc)
+                     #:position (add1 (complete-srcloc-position parent-loc))
+                     #:position-span (complete-srcloc-position-span loc)
+                     #:line (complete-srcloc-line parent-loc)
+                     #:line-span line-span
+                     #:column new-column
+                     #:column-end (if (zero? line-span)
+                                      (+ new-column column-delta)
+                                      old-column-end)))
+  (syntax-set-srcloc stx new-loc))
+
+(define (syntax-set-srcloc/squeeze-to-fit-children stx)
+  (define children (list*->list (syntax-e stx)))
+  (define firstloc (syntax-complete-srcloc (first children)))
+  (define lastloc (syntax-complete-srcloc (last children)))
+  (define position (sub1 (complete-srcloc-position firstloc)))
+  (define position-span
+    (- (add1 (complete-srcloc-position-end lastloc)) position))
+  (define line (complete-srcloc-line firstloc))
+  (define line-span (- (complete-srcloc-line-end lastloc) line))
+  (define new-loc
+    (complete-srcloc #:source (complete-srcloc-source firstloc)
+                     #:position position
+                     #:position-span position-span
+                     #:line line
+                     #:line-span line-span
+                     #:column (sub1 (complete-srcloc-column firstloc))
+                     #:column-end (add1 (complete-srcloc-column-end lastloc))))
+  (syntax-set-srcloc stx new-loc))
+
+(define (display-test-loc #:test-name name
+                          #:srcloc-getter [getter complete-srcloc-position-span]
+                          #:stx stx)
+  (printf "--~a------\n\n" name)
+  (displayln (tree-map (syntax-complete-srcloc-tree stx) getter)))

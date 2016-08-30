@@ -91,13 +91,14 @@
           (if fix
               (string-append-lines
                warning-message
+               ""
+               (syntax->string/line-numbers (suggested-fix-original-stx fix)
+                                            #:indent-spaces 3)
+               ""
                "suggested fix:"
                ""
-               (syntax->string (suggested-fix-original-stx fix))
-               ""
-               "->"
-               ""
-               (syntax->string (suggested-fix-replacement-stx fix)))
+               (syntax->string/line-numbers (suggested-fix-replacement-stx fix)
+                                            #:indent-spaces 3))
               warning-message)))
 
 (module+ test

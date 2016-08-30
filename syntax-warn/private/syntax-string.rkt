@@ -4,108 +4,107 @@
 
 (provide
  (contract-out
-  [syntax->string (-> syntax? string?)]))
+  [syntax->string (-> syntax? string?)]
+  [syntax->string/line-numbers
+   (->* (syntax?)
+        (#:indent-spaces exact-nonnegative-integer?)
+        string?)]))
 
-(require racket/list
+(require racket/contract
+         racket/list
          racket/format
          racket/function
          racket/port
          racket/sequence
-         racket/string)
+         racket/string
+         "syntax-srcloc.rkt")
 
 (module+ test
   (require rackunit))
 
 
-(define (syntax->string stx)
-  (cond [(identifier? stx)
-         (identifier->string stx)]
-        [(syntax-list? stx)
-         (syntax-list->string stx)]
-        [else (literal->string stx)]))
+(define (syntax->string/line-numbers stx #:indent-spaces [indent-spaces 1])
+  (add-line-numbers (syntax->string stx)
+                    #:start-line (syntax-line stx)
+                    #:indent-spaces indent-spaces))
 
-(define (identifier->string stx)
-  (symbol->string (identifier-binding-symbol stx)))
+(define (syntax->string stx #:start-col [start-col 0])
+  (cond [(syntax-list? stx)
+         (syntax-list->string stx #:start-col start-col)]
+        [else (literal->string stx #:start-col start-col)]))
 
 (define (syntax-list? stx)
   (not (not (syntax->list stx))))
 
-(define (write-spaces n)
-  (write-string (make-string n #\space)))
+(define (literal->string stx #:start-col [start-col 0])
+  (string-append
+   (make-string (- (syntax-column stx) start-col) #\space)
+   (~s (syntax->datum stx))))
 
-(define (write-newlines n)
-  (write-string (make-string n #\newline)))
+(define (syntax-list->string stx #:start-col [start-col 0])
+  (define loc (syntax-complete-srcloc stx))
+  (define col (complete-srcloc-column loc))
+  (with-output-to-string
+      (thunk
+       (write-spaces (- col start-col))
+       (write-string "(")
+       (for/fold ([prev-end-col (add1 col)]
+                  [prev-end-line (complete-srcloc-line loc)])
+                 ([stx-part (in-syntax stx)])
+         (define part-loc (syntax-complete-srcloc stx-part))
+         (define part-line (complete-srcloc-line part-loc))
+         (define part-col (complete-srcloc-column part-loc))
+         (if (equal? prev-end-line part-line)
+             (write-spaces (- part-col prev-end-col))
+             (begin
+               (write-newlines (- part-line prev-end-line))
+               (write-spaces part-col)))
+         (write-string
+          (syntax->string stx-part #:start-col part-col))
+         (values (complete-srcloc-column-end part-loc)
+                 (complete-srcloc-line-end part-loc)))
+       (write-string ")"))))
 
-(define (string-indent str n)
-  (with-output-to-string*
-    (for ([line (string-split str "\n")]
-          [i (in-naturals)])
-      (write-spaces n)
-      (write-string line)
-      (unless (zero? i)
-        (write-newlines 1)))))
+(define (add-line-numbers str
+                          #:start-line [start-line 1]
+                          #:indent-spaces [indent-spaces 1])
+  (define lines
+    (string-split str "\n" #:trim? #f #:repeat? #t))
+  (define max-line-digits
+    (num-digits (+ start-line (length lines))))
+  (define (format-line line n)
+    (string-append (~a n #:min-width max-line-digits)
+                   (make-string indent-spaces #\space)
+                   line))
+  (string-join
+   (for/list ([line lines]
+              [n (in-naturals start-line)])
+     (format-line line n))
+   "\n"))
 
-(define (syntax-list->string stx)
-  (define start-col (syntax-column stx))
-  (unless start-col
-    (error 'syntax->string "syntax ~a has no start column" stx))
-  (with-output-to-string*
-    (write-string "(")
-    (for/fold ([prev-end-col (add1 start-col)]
-               [prev-line (syntax-line stx)])
-              ([stx-part (in-syntax stx)])
-      (define part-start-col (syntax-column stx-part))
-      (define part-line (syntax-line stx-part))
-      (unless part-start-col
-        (error 'syntax->string
-               "syntax part ~a has no start column"
-               stx-part))
-      (unless part-line
-        (error 'syntax->string
-               "syntax part ~a has no line number"))
-      (call/comparison
-       (compare part-line prev-line)
-       #:less (thunk
-               (error 'syntax->string
-                      "syntax part ~a seems to be on a line earlier than its predecessor"
-                      stx-part))
-       #:equal (thunk
-                (write-spaces (- part-start-col prev-end-col))
-                (write-string (syntax->string stx-part)))
-       #:greater (thunk
-                  (write-newlines (- part-line prev-line))
-                  (write-string
-                   (string-indent (syntax->string stx-part)
-                                  (- part-start-col start-col)))))
-      (values (+ part-start-col (syntax-span stx-part)) part-line))
-    (write-string ")")))
+(define (num-digits n)
+  (string-length (~a n)))
 
-(define (literal->string stx)
-  (~s (syntax->datum stx)))
+(define (write-char chr n)
+  (void (write-string (make-string n chr))))
+
+(define/contract (write-spaces n)
+  (-> exact-nonnegative-integer? void?)
+  (write-char #\space n))
+
+(define/contract (write-newlines n)
+  (-> exact-nonnegative-integer? void?)
+  (write-char #\newline n))
 
 (define-syntax-rule (with-output-to-string* body ...)
   (with-output-to-string (thunk body ...)))
 
-(define (compare a b)
-  (cond [(< a b) 'less]
-        [(> a b) 'greater]
-        [else 'equal]))
-
-(define (call/comparison comparison
-                         #:less [less-thunk void]
-                         #:greater [greater-thunk void]
-                         #:equal [equal-thunk void])
-  (case comparison
-    [(less) (less-thunk)]
-    [(greater) (greater-thunk)]
-    [(equal) (equal-thunk)]))
-
 (module+ test
   (define test-stx
-    #'(require foo
+    #'(  require foo
          bar
                  (baz   blah
                     )
                bork   fork))
   (check-equal? (syntax->string test-stx)
-                "(require foo\n   bar\n           (baz   blah)\n\n         bork   fork)"))
+                "      (  require foo\n         bar\n                 (baz   blah)\n\n               bork   fork)"))
