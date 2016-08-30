@@ -2,5 +2,5 @@
 
 (require rackunit
          (for-syntax syntax/parse
-                       syntax/parse/define)
+                     syntax/parse/define)
          racket/format)
