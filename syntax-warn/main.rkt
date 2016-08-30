@@ -114,9 +114,8 @@
                               '("----------------"
                                 "warn/main.rkt"
                                 "use a different name"
-                                "suggested fix:"
                                 "foo"
-                                "->"
+                                "suggested fix:"
                                 "bar")))
 
 (define (check-syntax-warnings stx)
