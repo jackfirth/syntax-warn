@@ -11,6 +11,7 @@
 (require "private/rackunit-port.rkt"
          "private/rackunit-string.rkt"
          "private/string-lines.rkt"
+         "private/syntax-string.rkt"
          racket/list
          racket/format
          racket/function
@@ -90,13 +91,14 @@
           (if fix
               (string-append-lines
                warning-message
+               ""
+               (syntax->string/line-numbers (suggested-fix-original-stx fix)
+                                            #:indent-spaces 3)
+               ""
                "suggested fix:"
                ""
-               (indent (~a (syntax->datum (suggested-fix-original-stx fix))))
-               ""
-               "->"
-               ""
-               (indent (~a (syntax->datum (suggested-fix-replacement-stx fix)))))
+               (syntax->string/line-numbers (suggested-fix-replacement-stx fix)
+                                            #:indent-spaces 3))
               warning-message)))
 
 (module+ test
@@ -112,9 +114,8 @@
                               '("----------------"
                                 "warn/main.rkt"
                                 "use a different name"
-                                "suggested fix:"
                                 "foo"
-                                "->"
+                                "suggested fix:"
                                 "bar")))
 
 (define (check-syntax-warnings stx)
