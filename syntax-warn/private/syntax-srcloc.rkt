@@ -8,6 +8,7 @@
  (contract-out
   [tree/c (-> contract? contract?)]
   [tree-map (-> (tree/c any/c) procedure? (tree/c any/c))]
+  [syntax-srcloc (-> syntax? srcloc?)]
   [syntax-complete-srcloc (-> syntax? complete-srcloc?)]
   [syntax-complete-srcloc-tree (-> syntax? (tree/c complete-srcloc?))]))
 
@@ -30,6 +31,8 @@
     [(cons v children)
      (define (recur child) (tree-map child f))
      (cons (f v) (map recur children))]))
+
+(define (syntax-srcloc stx) (build-source-location stx))
 
 (define (syntax-complete-srcloc-tree stx)
   (cons (syntax-complete-srcloc stx)

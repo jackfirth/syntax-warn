@@ -4,13 +4,13 @@
 
   (require (for-syntax racket/base
                        syntax/parse
+                       warn
                        warn/require)
            (except-in racket/base require)
            (rename-in racket/base [require base-require])
            racket/splicing
-           racket/stxparam
-           warn/module)
-
+           racket/stxparam)
+  
   (define-syntax (require stx)
     (define stx/warn (warn-require-phase-order stx))
     (define expanded-stx
@@ -20,9 +20,8 @@
                    (syntax-e expanded-stx)
                    expanded-stx
                    stx/warn))
-
-  (provide (except-out (all-from-out racket/base) #%module-begin)
-           (rename-out [module-begin/warn #%module-begin])
+  
+  (provide (all-from-out racket/base)
            require))
 
 (module reader syntax/module-reader
