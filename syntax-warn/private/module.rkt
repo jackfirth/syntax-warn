@@ -75,7 +75,7 @@
   (map resolve-module-path all-files))
 
 (define (module-file? file-path)
-  (define maybe-ext (path-get-extension file-path))
+  (define maybe-ext (path-get-extension/backported file-path))
   (and maybe-ext
        (member (subbytes maybe-ext 1)
                (get-module-suffixes))))
