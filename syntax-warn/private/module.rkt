@@ -80,3 +80,18 @@
        (member (subbytes maybe-ext 1)
                (get-module-suffixes))))
 
+;; These utilities are backported from Racket 6.6 to support earlier versions
+
+(define (file-name/backported who name dir-ok?)
+  (unless (or (path-string? name)
+              (path-for-some-system? name))
+    (raise-argument-error who "(or/c path-string? path-for-some-system?)" name))
+  (let-values ([(base file dir?) (split-path name)])
+    (and (or dir-ok? (not dir?))
+         (path-for-some-system? file) file)))
+
+(define (path-get-extension/backported name)
+  (let* ([name (file-name/backported 'path-get-extension name #t)]
+         [name (and name (path->bytes name))])
+    (cond [(and name (regexp-match #rx#"(?<=.)([.][^.]+)$" name)) => cadr]
+          [else #f])))
