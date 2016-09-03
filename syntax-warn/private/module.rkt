@@ -69,7 +69,7 @@
   (define-values (files subdirs)
     (partition file-exists? (directory-list dir-path #:build? #t)))
   (define module-files (filter module-file? files))
-  (append* (map resolve-module-path module-files)
+  (append* (map resolve-module-path/backported module-files)
            (map directory-warn-modules/path subdirs)))
 
 (define (module-file? file-path)
@@ -79,6 +79,11 @@
                (get-module-suffixes))))
 
 ;; These utilities are backported from Racket 6.6 to support earlier versions
+
+(define (resolve-module-path/backported path)
+  ;; Pre-6.6 implementations behave the same but require
+  ;; the second arg
+  (resolve-module-path path #f))
 
 (define (file-name/backported who name dir-ok?)
   (unless (or (path-string? name)
