@@ -130,8 +130,12 @@
     [(package) (append-map package-warn-modules module-args)]))
 
 (define (warn-modules resolved-module-paths)
+  (define any-warned? (box #f))
   (for ([modpath resolved-module-paths])
-    (for-each print-warning (read-modpath-warnings modpath))))
+    (for ([warning (read-modpath-warnings modpath)])
+      (set-box! any-warned? #t)
+      (print-warning warning)))
+  (unbox any-warned?))
 
 (define (read-modpath-warnings modpath)
   (define (read-modpath-expansion)
@@ -152,4 +156,5 @@
     [(== 1) (printf "Checking 1 module\n")]
     [num-modules (printf "Checking ~a modules\n" num-modules)])
   (flush-output)
-  (warn-modules modules))
+  (when (warn-modules modules)
+    (exit 1)))
