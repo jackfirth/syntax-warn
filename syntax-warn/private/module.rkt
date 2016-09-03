@@ -69,8 +69,8 @@
   (define-values (files subdirs)
     (partition file-exists? (directory-list dir-path #:build? #t)))
   (define module-files (filter module-file? files))
-  (append (map resolve-module-path module-files)
-          (append-map directory-warn-modules/path subdirs)))
+  (append* (map resolve-module-path module-files)
+           (map directory-warn-modules/path subdirs)))
 
 (define (module-file? file-path)
   (define maybe-ext (path-get-extension/backported file-path))
