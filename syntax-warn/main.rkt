@@ -2,19 +2,16 @@
 
 (provide (struct-out suggested-fix)
          (struct-out syntax-warning)
+         read-module-warnings
          syntax-warn
-         syntax-warnings-property-key
+         syntax-warning/fix?
          syntax-warnings)
 
-(require "private/string-lines.rkt"
+(require (for-syntax racket/base)
          "private/syntax-srcloc.rkt"
-         "private/syntax-string.rkt"
-         racket/list
-         racket/format
          racket/function
-         (rename-in (only-in racket/base #%module-begin)
-                    [#%module-begin base-module-begin])
-         (for-syntax racket/base))
+         racket/list
+         syntax/modread)
 
 (module+ test
   (require rackunit))
@@ -23,11 +20,16 @@
 (struct suggested-fix (original-stx replacement-stx) #:prefab)
 (struct syntax-warning (location message fix) #:prefab)
 
+(define (syntax-warning/fix? v)
+  (and (syntax-warning? v)
+       (not (not (syntax-warning-fix v)))))
+
 (define (syntax-warn stx message #:fix [replacement-stx #f] #:bad-stx [bad-stx stx])
   (define fix (and replacement-stx (suggested-fix bad-stx replacement-stx)))
   (define warning (syntax-warning (syntax-srcloc bad-stx) message fix))
-  (syntax-property stx syntax-warnings-property-key
-                   (cons warning (or (syntax-property stx syntax-warnings-property-key) '()))))
+  (define warnings (syntax-property stx syntax-warnings-property-key))
+  (define warnings/added (cons warning (or warnings '())))
+  (syntax-property stx syntax-warnings-property-key warnings/added))
 
 (define syntax-warnings-property-key 'warnings)
 
@@ -56,3 +58,15 @@
                                                   (suggested-fix warned-once-stx identity-stx)))
   (check-equal? (syntax-warnings warned-twice-stx)
                 (list expected-second-warning expected-first-warning)))
+
+(define (read-module-warnings modpath)
+  (define (read-modpath-expansion)
+    (with-input-from-file modpath #:mode 'text
+      (thunk
+       (port-count-lines! (current-input-port))
+       (parameterize ([current-namespace (make-base-namespace)])
+         (expand-syntax
+          (namespace-syntax-introduce
+           (read-syntax modpath)))))))
+  (syntax-warnings
+   (with-module-reading-parameterization read-modpath-expansion)))

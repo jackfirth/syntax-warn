@@ -106,8 +106,8 @@
                              "Equivalent to \"--arg-kind package\"")
                             (kind-param 'package)]
    #:args (module-arg . module-args)
-   (warn-command-args (kind-param)
-                      (cons module-arg module-args))))
+   (module-args (kind-param)
+                (cons module-arg module-args))))
 
 (define (check-kind! k)
   (unless (member k (list 'file 'directory 'collection 'package))
@@ -115,19 +115,6 @@
      (string->symbol (short-program+command-name))
      "expected an arg kind of file, directory, collection, or package"
      "--arg-kind" k)))
-
-(struct warn-command-args
-  (kind module-args)
-  #:transparent)
-
-(define (warn-command-args->modules-to-check args)
-  (define kind (warn-command-args-kind args))
-  (define module-args (warn-command-args-module-args args))
-  (case kind
-    [(file) module-args]
-    [(directory) (append-map directory-warn-modules module-args)]
-    [(collection) (append-map collection-warn-modules module-args)]
-    [(package) (append-map package-warn-modules module-args)]))
 
 (define (warn-modules resolved-module-paths)
   (define any-warned? (box #f))
@@ -150,7 +137,7 @@
    (with-module-reading-parameterization read-modpath-expansion)))
   
 (module+ main
-  (define modules (warn-command-args->modules-to-check (parse-warn-command!)))
+  (define modules (module-args->modules (parse-warn-command!)))
   (match (length modules)
     [(== 0) (printf "No modules found\n")]
     [(== 1) (printf "Checking 1 module\n")]

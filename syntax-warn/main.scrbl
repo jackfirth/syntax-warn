@@ -4,8 +4,6 @@
 
 @(define (warn-tech . pre-content)
    (apply tech #:key "syntax-warning" #:normalize? #f pre-content))
-@(define-syntax-rule (document-syntax-property-key id pre-flow ...)
-   (defform #:kind "syntax property key" #:id id id pre-flow ...))
 @(define-syntax-rule (syntax-warn-examples example ...)
    (examples #:eval (make-base-eval #:lang 'racket/base '(require warn)) example ...))
 @(define-syntax-rule (document-syntax-parameter id pre-flow ...)
@@ -56,17 +54,11 @@ other code and tools.
  attached. The warning points to @racket[bad-stx] as its source, which defaults to
  @racket[stx] if not provided. The warning has @racket[message] as its message.
  If @racket[replacement-stx] is not @racket[#f], the warning suggests replacing
- @racket[bad-stx] with @racket[replacement-stx]. The warning is added under the
- @racket[syntax-warning-property-key] syntax property.
+ @racket[bad-stx] with @racket[replacement-stx]. The warning is attached via a syntax
+ property whose key is internal to the warnings library.
  @syntax-warn-examples[
  (syntax-warn #'(lambda (lambda) lambda)
               "Shadowing the language defined identifier \"lambda\" is discouraged")]}
-
-@document-syntax-property-key[syntax-warnings-property-key]{
- A value used as the @racket[syntax-property] key that @warn-tech{syntax-warnings}
- are attached to. This value is not guaranteed to remain constant across package
- versions.
- @syntax-warn-examples[syntax-warnings-property-key]}
 
 @defproc[(syntax-warnings [stx syntax?]) (listof syntax?)]{
  Returns a list of all syntax warnings present in @racket[stx]. This includes
