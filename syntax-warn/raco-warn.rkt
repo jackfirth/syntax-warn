@@ -14,7 +14,6 @@
 
 (module+ test
   (require rackunit
-           "private/rackunit-port.rkt"
            "private/rackunit-string.rkt"))
 
 
