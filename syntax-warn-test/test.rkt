@@ -33,11 +33,11 @@
   (test-case "Checking a module with warnings"
     (define result (run-warn-command "warn/test-warnings"))
     (check-equal? (system-result-code result) 1)
-    (check-equal? (system-result-stderr result) "")
     (check-string-contains-all? (system-result-stdout result)
                                 (list "Checking 1 module\n"
                                       "syntax-warn-test/test-warnings/main.rkt"
                                       "phase order"
                                       "suggested fix"
                                       "require"
-                                      "for-syntax"))))
+                                      "for-syntax"))
+    (check-equal? (system-result-stderr result) "")))

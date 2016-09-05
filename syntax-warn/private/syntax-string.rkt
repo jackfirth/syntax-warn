@@ -111,4 +111,6 @@
                     )
                bork   fork))
   (check-equal? (syntax->string test-stx)
+                "(  require foo\n         bar\n                 (baz   blah)\n\n               bork   fork)")
+  (check-equal? (syntax->string test-stx #:start-col 0)
                 "      (  require foo\n         bar\n                 (baz   blah)\n\n               bork   fork)"))
