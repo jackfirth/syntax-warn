@@ -66,22 +66,24 @@
                                    #:num-fixes num-fixes
                                    #:num-deltas num-deltas
                                    #:run-mode mode)
-  (unless (zero? num-fixes)
-    (define one-warning? (= num-warnings 1))
-    (define dry-run? (equal? mode 'dry))
-    (define message
-      (format "~a: ~a warning~a, ~a ~a~a\n"
-              mod
-              num-warnings
-              (if one-warning? "" "s")
-              (if dry-run? "would fix" "fixing")
-              (if one-warning? "" num-fixes)
-              (if (equal? num-deltas num-fixes)
-                  ""
-                  (format ", ~a conflicting fixes discarded"
-                          (- num-fixes num-deltas)))))
-    (write-string message)
-    (flush-output)))
+  (cond [(zero? num-fixes)
+         (write-string (format "raco warn: ~a\n" mod))]
+        [else
+         (define one-warning? (= num-warnings 1))
+         (define dry-run? (equal? mode 'dry))
+         (define message
+           (format "raco warn: ~a: ~a warning~a, ~a ~a~a\n"
+                   mod
+                   num-warnings
+                   (if one-warning? "" "s")
+                   (if dry-run? "would fix" "fixing")
+                   (if one-warning? "" num-fixes)
+                   (if (equal? num-deltas num-fixes)
+                       ""
+                       (format ", ~a conflicting fixes discarded"
+                               (- num-fixes num-deltas)))))
+         (write-string message)])
+  (flush-output))
 
 (define (suggested-fix->string-delta fix)
   (define loc (syntax-complete-srcloc (suggested-fix-original-stx fix)))

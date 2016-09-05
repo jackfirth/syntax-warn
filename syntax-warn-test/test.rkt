@@ -20,18 +20,15 @@
   (define stderr (get-output-string stderr-str-port))
   (system-result exit-code stdout stderr))
 
-(define (run-warn-command collect)
-  (system/result (format "raco warn -c ~a" collect)))
-
 (module+ test
   (test-case "Checking a module with no warnings"
-    (define result (run-warn-command "warn/test-no-warnings"))
+    (define result (system/result "raco warn -c warn/test-no-warnings"))
     (check-equal? (system-result-code result) 0)
     (check-string-contains? (system-result-stdout result)
                             "Checking 1 module\n")
     (check-equal? (system-result-stderr result) ""))
   (test-case "Checking a module with warnings"
-    (define result (run-warn-command "warn/test-warnings"))
+    (define result (system/result "raco warn -c warn/test-warnings"))
     (check-equal? (system-result-code result) 1)
     (check-string-contains-all? (system-result-stdout result)
                                 (list "Checking 1 module\n"
@@ -40,4 +37,23 @@
                                       "suggested fix"
                                       "require"
                                       "for-syntax"))
-    (check-equal? (system-result-stderr result) "")))
+    (check-equal? (system-result-stderr result) ""))
+  (test-case "Fixing a module with no warnings"
+    (define result (system/result "raco fix -c warn/test-no-warnings"))
+    (check-equal? (system-result-code result) 0)
+    (define expected-stdout-strings
+      (list "Checking 1 module\n"
+            "syntax-warn-test/test-no-warnings/main.rkt"))
+    (check-string-contains-all? (system-result-stdout result)
+                                expected-stdout-strings)
+    (check-equal? (system-result-stderr result) ""))
+  (test-case "Fixing a module with warnings in dry run"
+    (define result (system/result "raco fix -cD warn/test-warnings"))
+    (check-equal? (system-result-code result) 0)
+    (check-equal? (system-result-stderr result) "")
+    (define expected-stdout-strings
+      (list "Checking 1 module\n"
+            "syntax-warn-test/test-warnings/main.rkt"
+            "would fix"))
+    (check-string-contains-all? (system-result-stdout result)
+                                expected-stdout-strings)))
