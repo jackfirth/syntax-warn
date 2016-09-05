@@ -56,7 +56,6 @@
   (test-case "Formatted warning without a suggested fix"
     (define formatted-warning
       (format-warning (syntax-warning (syntax-srcloc #'here) "not there" #f)))
-    (check-string-contains? formatted-warning "raco-warn.rkt")
     (check-string-contains? formatted-warning "not there")
     (check-string-has-trailing-newline? formatted-warning))
   (test-case "Formatted warning with a suggested fix"
@@ -66,7 +65,7 @@
                       (suggested-fix #'foo #'bar)))
     (define expected-message-strings
       (list "----------------"
-            "raco-warn.rkt"
+            "L" "C"
             "use a different name"
             "foo"
             "suggested fix:"
