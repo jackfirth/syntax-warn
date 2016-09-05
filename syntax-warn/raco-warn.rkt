@@ -19,9 +19,9 @@
 
 
 (define (srcloc-location-string srcloc)
-  (format "~a:~a"
-          (srcloc-source srcloc)
-          (srcloc-line srcloc)))
+  (format "L~a:C~a:"
+          (srcloc-line srcloc)
+          (srcloc-column srcloc)))
 
 (define (separator-format sep width)
   (define separator (make-string width sep))
@@ -56,7 +56,6 @@
   (test-case "Formatted warning without a suggested fix"
     (define formatted-warning
       (format-warning (syntax-warning (syntax-srcloc #'here) "not there" #f)))
-    (check-string-contains? formatted-warning "raco-warn.rkt")
     (check-string-contains? formatted-warning "not there")
     (check-string-has-trailing-newline? formatted-warning))
   (test-case "Formatted warning with a suggested fix"
@@ -66,7 +65,7 @@
                       (suggested-fix #'foo #'bar)))
     (define expected-message-strings
       (list "----------------"
-            "raco-warn.rkt"
+            "L" "C"
             "use a different name"
             "foo"
             "suggested fix:"
@@ -105,9 +104,8 @@
                              "Modules in packages are recursively checked"
                              "Equivalent to \"--arg-kind package\"")
                             (kind-param 'package)]
-   #:args (module-arg . module-args)
-   (warn-command-args (kind-param)
-                      (cons module-arg module-args))))
+   #:args (arg . args)
+   (module-args (kind-param) (cons arg args))))
 
 (define (check-kind! k)
   (unless (member k (list 'file 'directory 'collection 'package))
@@ -116,41 +114,18 @@
      "expected an arg kind of file, directory, collection, or package"
      "--arg-kind" k)))
 
-(struct warn-command-args
-  (kind module-args)
-  #:transparent)
-
-(define (warn-command-args->modules-to-check args)
-  (define kind (warn-command-args-kind args))
-  (define module-args (warn-command-args-module-args args))
-  (case kind
-    [(file) module-args]
-    [(directory) (append-map directory-warn-modules module-args)]
-    [(collection) (append-map collection-warn-modules module-args)]
-    [(package) (append-map package-warn-modules module-args)]))
-
 (define (warn-modules resolved-module-paths)
   (define any-warned? (box #f))
   (for ([modpath resolved-module-paths])
-    (for ([warning (read-modpath-warnings modpath)])
+    (printf "raco warn: ~a\n" modpath)
+    (flush-output)
+    (for ([warning (read-module-warnings modpath)])
       (set-box! any-warned? #t)
       (print-warning warning)))
   (unbox any-warned?))
 
-(define (read-modpath-warnings modpath)
-  (define (read-modpath-expansion)
-    (with-input-from-file modpath #:mode 'text
-      (thunk
-       (port-count-lines! (current-input-port))
-       (parameterize ([current-namespace (make-base-namespace)])
-         (expand-syntax
-          (namespace-syntax-introduce
-           (read-syntax modpath)))))))
-  (syntax-warnings
-   (with-module-reading-parameterization read-modpath-expansion)))
-  
 (module+ main
-  (define modules (warn-command-args->modules-to-check (parse-warn-command!)))
+  (define modules (module-args->modules (parse-warn-command!)))
   (match (length modules)
     [(== 0) (printf "No modules found\n")]
     [(== 1) (printf "Checking 1 module\n")]

@@ -1,25 +1,33 @@
 #lang racket/base
 
-(require compiler/module-suffix
-         pkg/lib
-         racket/contract/base
-         racket/list
-         racket/path
-         syntax/modresolve)
-
-(define arg-resolver/c
-  (->* (string?) (#:source-name symbol?)
-       (listof module-path?)))
+(require racket/contract/base)
 
 (provide
  (contract-out
-  [directory-warn-modules arg-resolver/c]
-  [collection-warn-modules arg-resolver/c]
-  [package-warn-modules arg-resolver/c]))
+  [kind/c flat-contract?]
+  [struct module-args
+    ([kind kind/c]
+     [strs (listof string?)])]
+  [module-args->modules (-> module-args? (listof path?))]))
 
 (require (only-in (submod compiler/commands/test paths)
-                  collection-paths))
+                  collection-paths)
+         compiler/module-suffix
+         pkg/lib
+         racket/list
+         syntax/modresolve)
 
+
+(define kind/c (or/c 'file 'directory 'collection 'package))
+(struct module-args (kind strs) #:transparent)
+
+(define (module-args->modules args)
+  (define strs (module-args-strs args))
+  (case (module-args-kind args)
+    [(file) strs]
+    [(directory) (append-map directory-warn-modules strs)]
+    [(collection) (append-map collection-warn-modules strs)]
+    [(package) (append-map package-warn-modules strs)]))
 
 (define no-such-directory-exn-msg-format
   "~a: no such directory;\n directory: ~a\n full: ~a")
@@ -30,9 +38,11 @@
 (define no-such-package-exn-msg-format
   "~a: no such package;\n package: ~a")
 
+(define (clean-directory-path path)
+  (simplify-path (expand-user-path (path->directory-path path))))
+
 (define (directory-warn-modules dir #:source-name [source-name #f])
-  (define full-path
-    (simplify-path (expand-user-path (path->directory-path dir))))
+  (define full-path (clean-directory-path dir))
   (unless (directory-exists? full-path)
     (define msg
       (format no-such-directory-exn-msg-format
@@ -66,8 +76,9 @@
   (directory-warn-modules/path maybe-pkg-dir))
 
 (define (directory-warn-modules/path dir-path)
+  (define cleaned-path (clean-directory-path dir-path))
   (define-values (files subdirs)
-    (partition file-exists? (directory-list dir-path #:build? #t)))
+    (partition file-exists? (directory-list cleaned-path #:build? #t)))
   (define module-files (filter module-file? files))
   (append* (map resolve-module-path/backported module-files)
            (map directory-warn-modules/path subdirs)))
@@ -78,7 +89,8 @@
        (member (subbytes maybe-ext 1)
                (get-module-suffixes))))
 
-;; These utilities are backported from Racket 6.6 to support earlier versions
+;; These utilities are backported from Racket 6.6 to support
+;; earlier versions
 
 (define (resolve-module-path/backported path)
   ;; Pre-6.6 implementations behave the same but require
