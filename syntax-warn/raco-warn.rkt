@@ -19,9 +19,9 @@
 
 
 (define (srcloc-location-string srcloc)
-  (format "~a:~a"
-          (srcloc-source srcloc)
-          (srcloc-line srcloc)))
+  (format "L~a:C~a:"
+          (srcloc-line srcloc)
+          (srcloc-column srcloc)))
 
 (define (separator-format sep width)
   (define separator (make-string width sep))
@@ -105,9 +105,8 @@
                              "Modules in packages are recursively checked"
                              "Equivalent to \"--arg-kind package\"")
                             (kind-param 'package)]
-   #:args (module-arg . module-args)
-   (module-args (kind-param)
-                (cons module-arg module-args))))
+   #:args (arg . args)
+   (module-args (kind-param) (cons arg args))))
 
 (define (check-kind! k)
   (unless (member k (list 'file 'directory 'collection 'package))
@@ -119,23 +118,13 @@
 (define (warn-modules resolved-module-paths)
   (define any-warned? (box #f))
   (for ([modpath resolved-module-paths])
-    (for ([warning (read-modpath-warnings modpath)])
+    (printf "raco warn: ~a\n" modpath)
+    (flush-output)
+    (for ([warning (read-module-warnings modpath)])
       (set-box! any-warned? #t)
       (print-warning warning)))
   (unbox any-warned?))
 
-(define (read-modpath-warnings modpath)
-  (define (read-modpath-expansion)
-    (with-input-from-file modpath #:mode 'text
-      (thunk
-       (port-count-lines! (current-input-port))
-       (parameterize ([current-namespace (make-base-namespace)])
-         (expand-syntax
-          (namespace-syntax-introduce
-           (read-syntax modpath)))))))
-  (syntax-warnings
-   (with-module-reading-parameterization read-modpath-expansion)))
-  
 (module+ main
   (define modules (module-args->modules (parse-warn-command!)))
   (match (length modules)

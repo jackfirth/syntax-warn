@@ -64,7 +64,9 @@
     (with-input-from-file modpath #:mode 'text
       (thunk
        (port-count-lines! (current-input-port))
-       (parameterize ([current-namespace (make-base-namespace)])
+       (define-values (moddir _1 _2) (split-path modpath))
+       (parameterize ([current-namespace (make-base-namespace)]
+                      [current-directory moddir])
          (expand-syntax
           (namespace-syntax-introduce
            (read-syntax modpath)))))))
