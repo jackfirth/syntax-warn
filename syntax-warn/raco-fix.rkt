@@ -1,9 +1,13 @@
 #lang racket/base
 
 (require racket/cmdline
+         racket/file
          racket/match
          raco/command-name
          "private/module.rkt"
+         "private/string-delta.rkt"
+         "private/syntax-srcloc.rkt"
+         "private/syntax-string.rkt"
          "main.rkt")
 
 (struct fix-args (module-args run-mode) #:transparent)
@@ -60,18 +64,33 @@
 (define (write-warning-fix-message #:module-path mod
                                    #:num-warnings num-warnings
                                    #:num-fixes num-fixes
+                                   #:num-deltas num-deltas
                                    #:run-mode mode)
   (unless (zero? num-fixes)
     (define one-warning? (= num-warnings 1))
     (define dry-run? (equal? mode 'dry))
     (define message
-      (format "~a: ~a warning~a, ~a ~a\n"
+      (format "~a: ~a warning~a, ~a ~a~a\n"
               mod
               num-warnings
               (if one-warning? "" "s")
               (if dry-run? "would fix" "fixing")
-              (if one-warning? "" num-fixes)))
-    (write-string message)))
+              (if one-warning? "" num-fixes)
+              (if (equal? num-deltas num-fixes)
+                  ""
+                  (format ", ~a conflicting fixes discarded"
+                          (- num-fixes num-deltas)))))
+    (write-string message)
+    (flush-output)))
+
+(define (suggested-fix->string-delta fix)
+  (define loc (syntax-complete-srcloc (suggested-fix-original-stx fix)))
+  (string-delta (sub1 (complete-srcloc-position loc))
+                (complete-srcloc-position-span loc)
+                (syntax->string (suggested-fix-replacement-stx fix))))
+
+(define (syntax-warning/fix->string-delta warning/fix)
+  (suggested-fix->string-delta (syntax-warning-fix warning/fix)))
 
 (define (fix-warnings! args)
   (match-define (fix-args mod-args mode) args)
@@ -80,10 +99,20 @@
   (for ([mod mods])
     (define warnings (read-module-warnings mod))
     (define warnings/fixes (filter syntax-warning/fix? warnings))
+    (define deltas
+      (prune-string-deltas (map syntax-warning/fix->string-delta warnings/fixes)))
     (write-warning-fix-message #:module-path mod
                                #:num-warnings (length warnings)
                                #:num-fixes (length warnings/fixes)
-                               #:run-mode mode)))
+                               #:num-deltas (length deltas)
+                               #:run-mode mode)
+    (unless (equal? mode 'dry)
+      (define mod-str (file->string mod))
+      (define mod-str/deltas-applied (apply-pruned-string-deltas mod-str deltas))
+      (define (write-deltas output-port _)
+        (write-string mod-str/deltas-applied output-port))
+      (call-with-atomic-output-file mod write-deltas)
+      (void))))
 
 (module+ main
   (fix-warnings! (parse-warn-command!)))

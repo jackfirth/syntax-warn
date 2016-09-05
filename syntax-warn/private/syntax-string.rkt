@@ -4,7 +4,10 @@
 
 (provide
  (contract-out
-  [syntax->string (-> syntax? string?)]
+  [syntax->string
+   (->* (syntax?)
+        (#:start-col exact-nonnegative-integer?)
+        string?)]
   [syntax->string/line-numbers
    (->* (syntax?)
         (#:indent-spaces exact-nonnegative-integer?)
@@ -24,11 +27,11 @@
 
 
 (define (syntax->string/line-numbers stx #:indent-spaces [indent-spaces 1])
-  (add-line-numbers (syntax->string stx)
+  (add-line-numbers (syntax->string stx #:start-col 0)
                     #:start-line (syntax-line stx)
                     #:indent-spaces indent-spaces))
 
-(define (syntax->string stx #:start-col [start-col 0])
+(define (syntax->string stx #:start-col [start-col #f])
   (cond [(syntax-list? stx)
          (syntax-list->string stx #:start-col start-col)]
         [else (literal->string stx #:start-col start-col)]))
@@ -36,17 +39,18 @@
 (define (syntax-list? stx)
   (not (not (syntax->list stx))))
 
-(define (literal->string stx #:start-col [start-col 0])
+(define (literal->string stx #:start-col [start-col #f])
   (string-append
-   (make-string (- (syntax-column stx) start-col) #\space)
+   (if start-col (make-string (- (syntax-column stx) start-col) #\space) "")
    (~s (syntax->datum stx))))
 
-(define (syntax-list->string stx #:start-col [start-col 0])
+(define (syntax-list->string stx #:start-col [start-col #f])
   (define loc (syntax-complete-srcloc stx))
   (define col (complete-srcloc-column loc))
   (with-output-to-string
       (thunk
-       (write-spaces (- col start-col))
+       (when start-col
+         (write-spaces (- col start-col)))
        (write-string "(")
        (for/fold ([prev-end-col (add1 col)]
                   [prev-end-line (complete-srcloc-line loc)])
