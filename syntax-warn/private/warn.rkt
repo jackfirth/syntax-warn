@@ -14,8 +14,8 @@
   [syntax-warning
    (->* (#:message string?
          #:kind warning-kind?
-         #:stx (and/c syntax? syntax-original?))
-        (#:fix (and/c syntax? syntax-original?))
+         #:stx syntax?)
+        (#:fix syntax?)
         syntax-warning?)])
  define-warning-kind)
 

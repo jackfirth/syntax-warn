@@ -39,19 +39,13 @@ other code and tools.
 
 @defproc[(syntax-warning [#:message message string?]
                          [#:kind kind warning-kind?]
-                         [#:stx stx (and/c syntax? syntax-original?)]
-                         [#:fix fix (and/c syntax? syntax-original?) #f])
+                         [#:stx stx syntax?]
+                         [#:fix fix syntax? #f])
          syntax-warning?]{
  Constructs a @warn-tech{syntax warning} of kind @racket[kind] that identifies
  @racket[stx] as the syntax to blame and @racket[fix] as a suggested replacement
  to use in place of @racket[stx]. If @racket[fix] is not provided, the warning
- makes no suggestions about how to resolve it. Warnings expect consistent
- source location information, and as such the blamed syntax object and suggested
- fix syntax object must both be @racket[syntax-original?]. Macro-generated code
- isn't subject to syntax warnings, as it can't be automatically fixed nor can
- error reporting easily track down the macro that generated the offending
- syntax object. To attach a syntax warning during macro expansion, see
- @racket[syntax-warn] and @racket[syntax-local-introduce].}
+ makes no suggestions about how to resolve it.}
 
 @section{Attaching warnings to syntax}
 
