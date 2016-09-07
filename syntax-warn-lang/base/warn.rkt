@@ -12,7 +12,8 @@
            racket/stxparam)
   
   (define-syntax (require stx)
-    (define stx/warn (warn-require-phase-order stx))
+    (define stx/warn
+      (warn-require-phase-order (syntax-local-introduce stx)))
     (define expanded-stx
       (syntax-parse stx
         [(_ spec ...) #'(base-require spec ...)]))
