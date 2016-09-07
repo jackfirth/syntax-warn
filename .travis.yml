@@ -5,24 +5,25 @@ env:
     - RACKET_DIR=~/racket
     - DEPLOY_VERSION="6.6"
     - SCRIBBLE_ENTRYPOINT_FILE="syntax-warn/main.scrbl"
+    - PACKAGES="syntax-warn syntax-warn-lang syntax-warn-test"
   matrix:
-    - RACKET_VERSION=6.4 RUN_COVER=true
-    - RACKET_VERSION=6.5 RUN_COVER=true
+    - RACKET_VERSION=6.4
+    - RACKET_VERSION=6.5
     - RACKET_VERSION=6.6
-    - RACKET_VERSION=HEAD
+    - RACKET_VERSION=HEAD SKIP_COVER=true
 before_install:
   - git clone https://github.com/greghendershott/travis-racket.git ../travis-racket
   - cat ../travis-racket/install-racket.sh | bash
   - 'export PATH="${RACKET_DIR}/bin:${PATH}"'
-  - if [ -n "$RUN_COVER" ]; then raco pkg install --deps search-auto cover cover-coveralls; fi
+  - '[[ $SKIP_COVER ]] || raco pkg install --auto cover cover-coveralls'
 install:
   - raco pkg install --auto
       $TRAVIS_BUILD_DIR/syntax-warn
       $TRAVIS_BUILD_DIR/syntax-warn-lang
       $TRAVIS_BUILD_DIR/syntax-warn-test
 script:
-  - raco test -c warn racket/base
-  - if [ -n "$RUN_COVER" ]; then raco cover -f coveralls -d $TRAVIS_BUILD_DIR/coverage -c warn racket/base; fi
+  - raco test -p ${PACKAGES}
+  - '[[ $SKIP_COVER ]] || raco cover -f coveralls -d $TRAVIS_BUILD_DIR/coverage -p ${PACKAGES}'
 after_success:
   - echo "Starting deploy"
   - if [ "${DEPLOY_VERSION}" != "${RACKET_VERSION}" ]; then exit 0; fi

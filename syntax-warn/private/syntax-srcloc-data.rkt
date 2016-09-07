@@ -43,6 +43,12 @@
 (require racket/bool
          syntax/parse/define)
 
+(module+ test
+  (require racket/format
+           racket/function
+           rackunit))
+
+
 (define (srcloc-custom-write loc port mode)
   (define recur
     (case mode
@@ -72,6 +78,38 @@
   #:transparent
   #:methods gen:custom-write
   [(define write-proc srcloc-custom-write)])
+
+(module+ test
+  (check-equal? (~a (complete-srcloc #:source "/foo/bar.rkt"
+                                     #:position 10
+                                     #:position-span 100
+                                     #:line 3
+                                     #:line-span 2
+                                     #:column 4
+                                     #:column-end 12))
+                "(complete-srcloc\
+ #:source /foo/bar.rkt\
+ #:position 10\
+ #:position-span 100\
+ #:line 3\
+ #:line-span 2\
+ #:column 4\
+ #:column-end 12)")
+  (check-equal? (~v (complete-srcloc #:source "/foo/bar.rkt"
+                                     #:position 10
+                                     #:position-span 100
+                                     #:line 3
+                                     #:line-span 2
+                                     #:column 4
+                                     #:column-end 12))
+                "(complete-srcloc\
+ #:source \"/foo/bar.rkt\"\
+ #:position 10\
+ #:position-span 100\
+ #:line 3\
+ #:line-span 2\
+ #:column 4\
+ #:column-end 12)"))
 
 (define srcloc-has->/c (-> complete-srcloc? boolean?))
 
@@ -111,15 +149,43 @@
   (check-either-both-or-neither-provided l c "line" "column")
   (make-complete-srcloc s p ps l ls c ce))
 
+(module+ test
+  (check-exn exn:fail:contract?
+             (thunk (complete-srcloc #:position 1)))
+  (check-exn exn:fail:contract?
+             (thunk (complete-srcloc #:position-span 1)))
+  (check-not-exn (thunk (complete-srcloc #:position 1 #:position-span 1)))
+  (check-not-exn (thunk (complete-srcloc)))
+  (check-exn exn:fail:contract?
+             (thunk (complete-srcloc #:line 1 #:line-span 1)))
+  (check-exn exn:fail:contract?
+             (thunk (complete-srcloc #:column 1 #:column-span 1)))
+  (check-not-exn (thunk (complete-srcloc #:line 1 #:line-span 1
+                                         #:column 1 #:column-end 1))))
+
+
 (define (complete-srcloc-position-end loc)
   (and (complete-srcloc-position? loc)
        (+ (complete-srcloc-position loc)
           (complete-srcloc-position-span loc))))
 
+(module+ test
+  (test-case "complete-srcloc-position-end"
+    (define test-loc
+      (complete-srcloc #:position 10 #:position-span 40))
+    (check-equal? (complete-srcloc-position-end test-loc) 50)))
+
 (define (complete-srcloc-line-end loc)
   (and (complete-srcloc-line+col? loc)
        (+ (complete-srcloc-line loc)
           (complete-srcloc-line-span loc))))
+
+(module+ test
+  (test-case "complete-srcloc-line-end"
+    (define test-loc
+      (complete-srcloc #:line 5 #:line-span 12
+                       #:column 10 #:column-end 52))
+    (check-equal? (complete-srcloc-line-end test-loc) 17)))
 
 (define (complete-srcloc-set loc
                              #:source [s #f]
@@ -139,12 +205,36 @@
                    #:column (arg-or c complete-srcloc-column)
                    #:column-end (arg-or ce complete-srcloc-column-end)))
 
+(module+ test
+  (test-case "complete-srcloc-set"
+    (define test-loc
+      (complete-srcloc #:source "foo"))
+    (check-equal? (complete-srcloc-set test-loc
+                                       #:position 5
+                                       #:position-span 10)
+                  (complete-srcloc #:source "foo"
+                                   #:position 5
+                                   #:position-span 10))))
+
 (define (complete-srcloc->srcloc loc)
   (srcloc (complete-srcloc-source loc)
-          (complete-srcloc-position loc)
           (complete-srcloc-line loc)
           (complete-srcloc-column loc)
+          (complete-srcloc-position loc)
           (complete-srcloc-position-span loc)))
+
+(module+ test
+  (test-case "complete-srcloc->srcloc"
+    (define test-loc
+      (complete-srcloc #:source "foo"
+                       #:position 10
+                       #:position-span 20
+                       #:line 2
+                       #:line-span 3
+                       #:column 0
+                       #:column-end 5))
+    (check-equal? (complete-srcloc->srcloc test-loc)
+                  (srcloc "foo" 2 0 10 20))))
 
 (define (syntax-set-srcloc stx loc)
   (define list-loc
@@ -154,3 +244,21 @@
           (complete-srcloc-position loc)
           (complete-srcloc-position-span loc)))
   (datum->syntax stx (syntax-e stx) list-loc stx))
+
+(module+ test
+  (test-case "syntax-set-srcloc"
+    (define test-loc
+      (complete-srcloc #:source "foo"
+                       #:position 10
+                       #:position-span 20
+                       #:line 2
+                       #:line-span 3
+                       #:column 0
+                       #:column-end 5))
+    (define test-stx/loc
+      (syntax-set-srcloc #'here test-loc))
+    (check-equal? (syntax-source test-stx/loc) "foo")
+    (check-equal? (syntax-line test-stx/loc) 2)
+    (check-equal? (syntax-column test-stx/loc) 0)
+    (check-equal? (syntax-position test-stx/loc) 10)
+    (check-equal? (syntax-span test-stx/loc) 20)))

@@ -13,8 +13,8 @@
          "private/syntax-string.rkt")
 
 (module+ test
-  (require rackunit
-           "private/rackunit-port.rkt"
+  (require racket/port
+           rackunit
            "private/rackunit-string.rkt"))
 
 
@@ -23,9 +23,17 @@
           (srcloc-line srcloc)
           (srcloc-column srcloc)))
 
+(module+ test
+  (check-equal? (srcloc-location-string (make-srcloc "foo" 1 2 3 4))
+                "L1:C2:"))
+
 (define (separator-format sep width)
   (define separator (make-string width sep))
   (string-append-lines separator "~a" separator ""))
+
+(module+ test
+  (check-equal? (separator-format #\X 4)
+                "XXXX\n~a\nXXXX\n"))
 
 (define (format-warning warning #:separator-char [sep #\-] #:separator-width [width 80])
   (define warning-message
@@ -86,8 +94,9 @@
                  ("How to interpret the arguments as modules"
                   "One of file, directory, collection, or package"
                   "Defaults to file")
-                 (check-kind! kind)
-                 (kind-param kind)]
+                 (define kind-sym (string->symbol kind))
+                 (check-kind! kind-sym)
+                 (kind-param kind-sym)]
    [("-f" "--file-args") ("Interpret the arguments as files"
                           "Files are required as modules and checked"
                           "Equivalent to \"--arg-kind file\", default behavior")
@@ -114,6 +123,22 @@
      "expected an arg kind of file, directory, collection, or package"
      "--arg-kind" k)))
 
+(module+ test
+  (test-case "parse-warn-command!"
+    (define (parse/args args)
+      (parameterize ([current-command-line-arguments args])
+        (parse-warn-command!)))
+    (check-equal? (parse/args (vector "-f" "foo" "bar"))
+                  (module-args 'file (list "foo" "bar")))
+    (check-equal? (parse/args (vector "-d" "foo" "bar"))
+                  (module-args 'directory (list "foo" "bar")))
+    (check-equal? (parse/args (vector "-c" "foo" "bar"))
+                  (module-args 'collection (list "foo" "bar")))
+    (check-equal? (parse/args (vector "-p" "foo" "bar"))
+                  (module-args 'package (list "foo" "bar")))
+    (check-equal? (parse/args (vector "--arg-kind" "file" "foo" "bar"))
+                  (module-args 'file (list "foo" "bar")))))
+
 (define (warn-modules resolved-module-paths)
   (define any-warned? (box #f))
   (for ([modpath resolved-module-paths])
@@ -124,12 +149,47 @@
       (print-warning warning)))
   (unbox any-warned?))
 
-(module+ main
-  (define modules (module-args->modules (parse-warn-command!)))
+(define (run-warn-command! module-args)
+  (define modules (module-args->modules module-args))
   (match (length modules)
     [(== 0) (printf "No modules found\n")]
     [(== 1) (printf "Checking 1 module\n")]
     [num-modules (printf "Checking ~a modules\n" num-modules)])
   (flush-output)
-  (when (warn-modules modules)
-    (exit 1)))
+  (if (warn-modules modules) 1 0))
+
+(module+ test
+  (test-case "run-warn-command!"
+    (define (test-command args)
+      (define output (open-output-string))
+      (define code
+        (parameterize ([current-output-port output])
+          (run-warn-command! args)))
+      (list code (get-output-string output)))
+    (define no-warn-result
+      (test-command (module-args 'collection
+                                 (list "warn/test-no-warnings"))))
+    (define warn-result
+      (test-command (module-args 'collection
+                                 (list "warn/test-warnings"))))
+    (define no-warn-expected-strs
+      (list "Checking"
+            "module"
+            "raco warn: "
+            "test-no-warnings/main.rkt"))
+    (check-string-contains-all? (second no-warn-result)
+                                no-warn-expected-strs)
+    (define warn-expected-strs
+      (list "Checking"
+            "module"
+            "raco warn: "
+            "test-warnings/main.rkt"
+            "---------"
+            "phase order"))
+    (check-string-contains-all? (second warn-result)
+                                warn-expected-strs)
+    (check-equal? (first no-warn-result) 0)
+    (check-equal? (first warn-result) 1)))
+
+(module+ main
+  (exit (run-warn-command! (parse-warn-command!))))

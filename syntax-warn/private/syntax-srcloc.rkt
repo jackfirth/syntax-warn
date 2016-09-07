@@ -19,11 +19,28 @@
          "list.rkt")
 
 (module+ test
-  (require rackunit))
+  (require racket/function
+           rackunit))
 
 (define (tree/c item/c)
   (or/c empty?
         (recursive-contract (cons/c item/c (listof (tree/c item/c))))))
+
+(module+ test
+  (test-case "tree/c"
+    (define (x-tree? v)
+      (with-handlers ([exn:fail:contract? (const #f)])
+        (invariant-assertion (tree/c 'x) v)
+        #t))
+    (check-pred x-tree? '())
+    (check-pred x-tree? '(x))
+    (check-pred x-tree? '(x () () ()))
+    (check-pred x-tree? '(x (x (x)) () (x () (x) ())))
+    (define (not-x-tree? v)
+      (not (x-tree? v)))
+    (check-pred not-x-tree? '(a))
+    (check-pred not-x-tree? '(x x))
+    (check-pred not-x-tree? '(x () x))))
 
 (define (tree-map a-tree f)
   (match a-tree
@@ -31,6 +48,11 @@
     [(cons v children)
      (define (recur child) (tree-map child f))
      (cons (f v) (map recur children))]))
+
+(module+ test
+  (test-case "tree-map"
+    (check-equal? (tree-map '(1 (2) (3 (4) (5)) (6)) add1)
+                  '(2 (3) (4 (5) (6)) (7)))))
 
 (define (syntax-srcloc stx) (build-source-location stx))
 
