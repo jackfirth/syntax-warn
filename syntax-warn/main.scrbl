@@ -29,61 +29,45 @@ cause subtle bugs, and so on. Syntax warnings are first class values attached to
 source code at compile time through syntax properties, and can be inspected by
 other code and tools.
 
-@defstruct*[syntax-warning
-            ([location srcloc?] [message string?] [fix suggested-fix?])
-            #:transparent]{
- Structure representing a @warn-tech{syntax warning}. Syntax warnings contain a
- source location identifying the source of the warning and a human-readable message
- describing the warning.}
+@defstruct*[warning-kind ([name symbol?]) #:prefab]{
+ Structure representing a warning kind. @warn-tech{Syntax warnings} often have
+ similar sources and causes, and it can be helpful to group them under a warning
+ kind. The @racket[name] of the warning kind is used for reporting.}
 
-@defstruct*[suggested-fix
-            ([original-stx syntax?] [replacement-stx syntax?])
-            #:transparent]{
- Structure representing a way to fix a @warn-tech{syntax warning}. By replacing
- the content at @racket[original-stx]'s source location with the content of
- @racket[replacement-stx], the warning this fix was attached to will be resolved.}
+@defproc[(syntax-warning? [v any/c]) boolean?]{
+ Predicate that recognizes @warn-tech{syntax warnings}.}
+
+@defproc[(syntax-warning [#:message message string?]
+                         [#:kind kind warning-kind?]
+                         [#:stx stx (and/c syntax? syntax-original?)]
+                         [#:fix fix (and/c syntax? syntax-original?) #f])
+         syntax-warning?]{
+ Constructs a @warn-tech{syntax warning} of kind @racket[kind] that identifies
+ @racket[stx] as the syntax to blame and @racket[fix] as a suggested replacement
+ to use in place of @racket[stx]. If @racket[fix] is not provided, the warning
+ makes no suggestions about how to resolve it. Warnings expect consistent
+ source location information, and as such the blamed syntax object and suggested
+ fix syntax object must both be @racket[syntax-original?]. Macro-generated code
+ isn't subject to syntax warnings, as it can't be automatically fixed nor can
+ error reporting easily track down the macro that generated the offending
+ syntax object. To attach a syntax warning during macro expansion, see
+ @racket[syntax-warn] and @racket[syntax-local-introduce].}
 
 @section{Attaching warnings to syntax}
 
 @defproc[(syntax-warn [stx syntax?]
-                      [message string?]
-                      [#:fix replacement-stx (or/c syntax? #f) #f]
-                      [#:bad-stx bad-stx syntax? stx])
+                      [warning syntax-warning?])
          syntax?]{
- Returns a syntax object equivalent to @racket[stx] with a @warn-tech{syntax warning}
- attached. The warning points to @racket[bad-stx] as its source, which defaults to
- @racket[stx] if not provided. The warning has @racket[message] as its message.
- If @racket[replacement-stx] is not @racket[#f], the warning suggests replacing
- @racket[bad-stx] with @racket[replacement-stx]. The warning is attached via a syntax
- property whose key is internal to the warnings library.
+ Returns a syntax object equivalent to @racket[stx], but with @racket[warning]
+ attached as a @warn-tech{syntax warning}. The syntax warning need not blame
+ @racket[stx] as the source of the problem, this procedure merely provides the
+ ability to attach warnings to syntax objects via syntax properties.
  @syntax-warn-examples[
- (syntax-warn #'(lambda (lambda) lambda)
-              "Shadowing the language defined identifier \"lambda\" is discouraged")]}
+ (syntax-warn #'(foo Bar)
+              (syntax-warning #:message "Don't capitalize the \"Bar\" identifier"
+                              #:kind (warning-kind 'identifier-capitalization)
+                              #:stx #'foo))]}
 
 @defproc[(syntax-warnings [stx syntax?]) (listof syntax?)]{
  Returns a list of all syntax warnings present in @racket[stx]. This includes
  syntax warnings in any syntax objects nested within @racket[stx].}
-
-@section{Checking warnings}
-
-@defproc[(check-syntax-warnings [stx syntax?]) Void]{
- Retrieves all @warn-tech{syntax warnings} associated with @racket[stx] and logs
- them to @racket[current-error-port].}
-
-@document-syntax-parameter[warned-module-begin]{
- A @tech{syntax parameter} defining the base @racket[#%module-begin] form used by
- @racket[module-begin/warn]. This allows arbitrary languages to be extended with
- syntax warnings.}
-
-@defform[(module-begin/warn body ...)]{
- Equivalent to @racket[#%module-begin], but calls @racket[check-syntax-warnings]
- during expansion. The base @racket[#%module-begin] form used can be changed via
- the @racket[warned-module-begin] syntax parameter.}
-
-@section{Fixing warnings}
-
-@defproc[(fix-warning! [fix suggested-fix?]) void?]{
- Applies @racket[fix] by locating the file that the fix's origin syntax source
- location points to and replacing that syntax's contents with the suggested fix.
- Source locations in the suggested replacement syntax are used to determine
- formatting.}

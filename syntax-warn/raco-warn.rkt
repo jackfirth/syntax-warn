@@ -36,11 +36,13 @@
                 "XXXX\n~a\nXXXX\n"))
 
 (define (format-warning warning #:separator-char [sep #\-] #:separator-width [width 80])
+  (define stx (syntax-warning-stx warning))
+  (define fix (syntax-warning-fix warning))
+  (define message (syntax-warning-message warning))
   (define warning-message
     (format "~a ~a"
-            (srcloc-location-string (syntax-warning-location warning))
-            (syntax-warning-message warning)))
-  (define fix (syntax-warning-fix warning))
+            (srcloc-location-string (syntax-srcloc stx))
+            message))
   (define message-format
     (if fix
         (separator-format sep width)
@@ -51,26 +53,32 @@
               (string-append-lines
                warning-message
                ""
-               (syntax->string/line-numbers (suggested-fix-original-stx fix)
-                                            #:indent-spaces 3)
+               (syntax->string/line-numbers stx #:indent-spaces 3)
                ""
                "suggested fix:"
                ""
-               (syntax->string/line-numbers (suggested-fix-replacement-stx fix)
-                                            #:indent-spaces 3))
+               (syntax->string/line-numbers fix #:indent-spaces 3))
               warning-message)))
 
 (module+ test
+  (define-warning-kind raco-test-kind)
   (test-case "Formatted warning without a suggested fix"
     (define formatted-warning
-      (format-warning (syntax-warning (syntax-srcloc #'here) "not there" #f)))
+      (format-warning
+       (syntax-warning #:message "not there"
+                       #:kind raco-test-kind
+                       #:stx #'here)))
     (check-string-contains? formatted-warning "not there")
     (check-string-has-trailing-newline? formatted-warning))
   (test-case "Formatted warning with a suggested fix"
+    (define test-stx #'foo)
+    (define test-stx/fix
+      (datum->syntax test-stx 'bar test-stx test-stx))
     (define warning/fix
-      (syntax-warning (syntax-srcloc #'foo)
-                      "use a different name"
-                      (suggested-fix #'foo #'bar)))
+      (syntax-warning #:message "use a different name"
+                      #:kind raco-test-kind
+                      #:stx test-stx
+                      #:fix test-stx/fix))
     (define expected-message-strings
       (list "----------------"
             "L" "C"

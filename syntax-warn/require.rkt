@@ -48,6 +48,8 @@
                                 foo
                                 "bar.rkt")))
 
+(define-warning-kind require-phase-order)
+
 (define phase-order-message
   (string-append
    "Require specs are not in phase order "
@@ -58,10 +60,15 @@
     [(req-id:id clause ...)
      (define clause-stxs (syntax->list #'(clause ...)))
      (define clause-stxs/order (phase-ordered-specs clause-stxs))
-     (if (equal? clause-stxs clause-stxs/order)
-         stx
-         (syntax-warn stx phase-order-message
-                      #:fix (build-formatted-phase-ordered-stx stx)))]))
+     (cond
+       [(equal? clause-stxs clause-stxs/order) stx]
+       [else
+        (define warning
+          (syntax-warning #:message phase-order-message
+                          #:kind require-phase-order
+                          #:stx stx
+                          #:fix (build-formatted-phase-ordered-stx stx)))
+        (syntax-warn stx warning)])]))
 
 (define (build-formatted-phase-ordered-stx stx)
   (syntax-parse stx

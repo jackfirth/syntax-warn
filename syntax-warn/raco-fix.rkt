@@ -121,14 +121,11 @@
          (write-string message)])
   (flush-output))
 
-(define (suggested-fix->string-delta fix)
-  (define loc (syntax-complete-srcloc (suggested-fix-original-stx fix)))
+(define (syntax-warning/fix->string-delta warning/fix)
+  (define loc (syntax-complete-srcloc (syntax-warning-stx warning/fix)))
   (string-delta (sub1 (complete-srcloc-position loc))
                 (complete-srcloc-position-span loc)
-                (syntax->string (suggested-fix-replacement-stx fix))))
-
-(define (syntax-warning/fix->string-delta warning/fix)
-  (suggested-fix->string-delta (syntax-warning-fix warning/fix)))
+                (syntax->string (syntax-warning-fix warning/fix))))
 
 (define (fix-warnings! args)
   (match-define (fix-args mod-args mode) args)
