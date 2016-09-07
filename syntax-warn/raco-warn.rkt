@@ -191,5 +191,5 @@
     (check-equal? (first no-warn-result) 0)
     (check-equal? (first warn-result) 1)))
 
-#;(module+ main
+(module+ main
   (exit (run-warn-command! (parse-warn-command!))))
