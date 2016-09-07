@@ -161,19 +161,17 @@
 (module+ test
   (test-case "run-warn-command!"
     (define (test-command args)
-      (define code-box (box #f))
-      (define str
-        (with-output-to-string
-            (thunk (set-box! code-box (run-warn-command! args)))))
-      (list (unbox code-box) str))
+      (define output (open-output-string))
+      (define code
+        (parameterize ([current-output-port output])
+          (run-warn-command! args)))
+      (list code (get-output-string output)))
     (define no-warn-result
       (test-command (module-args 'collection
                                  (list "warn/test-no-warnings"))))
     (define warn-result
       (test-command (module-args 'collection
                                  (list "warn/test-warnings"))))
-    (check-equal? (first no-warn-result) 0)
-    (check-equal? (first warn-result) 1)
     (define no-warn-expected-strs
       (list "Checking"
             "module"
@@ -189,7 +187,9 @@
             "---------"
             "phase order"))
     (check-string-contains-all? (second warn-result)
-                                warn-expected-strs)))
+                                warn-expected-strs)
+    (check-equal? (first no-warn-result) 0)
+    (check-equal? (first warn-result) 1)))
 
-(module+ main
+#;(module+ main
   (exit (run-warn-command! (parse-warn-command!))))
