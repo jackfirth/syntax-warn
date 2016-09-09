@@ -29,14 +29,6 @@ cause subtle bugs, and so on. Syntax warnings are first class values attached to
 source code at compile time through syntax properties, and can be inspected by
 other code and tools.
 
-@defstruct*[warning-kind ([name symbol?]) #:prefab]{
- Structure representing a warning kind. @warn-tech{Syntax warnings} often have
- similar sources and causes, and it can be helpful to group them under a warning
- kind. The @racket[name] of the warning kind is used for reporting.}
-
-@defproc[(syntax-warning? [v any/c]) boolean?]{
- Predicate that recognizes @warn-tech{syntax warnings}.}
-
 @defproc[(syntax-warning [#:message message string?]
                          [#:kind kind warning-kind?]
                          [#:stx stx syntax?]
@@ -47,7 +39,28 @@ other code and tools.
  to use in place of @racket[stx]. If @racket[fix] is not provided, the warning
  makes no suggestions about how to resolve it.}
 
-@section{Attaching warnings to syntax}
+@defproc[(syntax-warning? [v any/c]) boolean?]{
+ Predicate that recognizes @warn-tech{syntax warnings}.}
+
+@defproc[(syntax-warning/fix? [v any/c]) boolean?]{
+ Predicate that recognizes @warn-tech{syntax warnings} that include a suggested
+ fix.}
+
+@deftogether[
+ (@defproc[(syntax-warning-message [warning syntax-warning?]) string?]
+   @defproc[(syntax-warning-kind [warning syntax-warning?]) warning-kind?]
+   @defproc[(syntax-warning-stx [warning syntax-warning?]) syntax?]
+   @defproc[(syntax-warning-fix [warning syntax-warning?]) (or/c syntax? #f)])]{
+ Accessors for fields of @warn-tech{syntax warnings}.}
+
+@defstruct*[warning-kind ([name symbol?]) #:prefab]{
+ Structure representing a warning kind. @warn-tech{Syntax warnings} often have
+ similar sources and causes, and it can be helpful to group them under a warning
+ kind. The @racket[name] of the warning kind is used for reporting.}
+
+@defform[(define-warning-kind id)]{
+ Binds @racket[id] as a @racket[warning-kind] whose name is the quoted form of
+ @racket[id].}
 
 @defproc[(syntax-warn [stx syntax?]
                       [warning syntax-warning?])
@@ -65,3 +78,18 @@ other code and tools.
 @defproc[(syntax-warnings [stx syntax?]) (listof syntax?)]{
  Returns a list of all syntax warnings present in @racket[stx]. This includes
  syntax warnings in any syntax objects nested within @racket[stx].}
+
+@defproc[(read-syntax-warnings [#:input-port in input-port? (current-input-port)]
+                               [#:source-name source any/c (object-name in)]
+                               [#:namespace namespace namespace? (current-namespace)])
+         (listof syntax-warning?)]{
+ Constructs a syntax object from @racket[in] using @racket[read-syntax], fully
+ expands it using @racket[expand-syntax] in @racket[namespace], and returns a
+ list of all syntax warnings found in the fully expanded module.}
+
+@defproc[(read-syntax-warnings/file [filepath path-string?]
+                                    [#:namespace namespace namespace? (current-namespace)])
+         (listof syntax-warning?)]{
+ Like @racket[read-syntax-warnings], but reads @racket[filepath] as a module.
+ Sets the @racket[current-directory] to the directory part of @racket[filepath]
+ and uses @racket[filepath] as the source name.}

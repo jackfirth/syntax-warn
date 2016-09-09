@@ -131,8 +131,9 @@
   (match-define (fix-args mod-args mode) args)
   (define mods (module-args->modules mod-args))
   (write-module-count-message (length mods))
+  (define warnings-namespace (make-base-namespace))
   (for ([mod mods])
-    (define warnings (read-module-warnings mod))
+    (define warnings (read-syntax-warnings/file mod #:namespace warnings-namespace))
     (define warnings/fixes (filter syntax-warning/fix? warnings))
     (define deltas
       (prune-string-deltas (map syntax-warning/fix->string-delta warnings/fixes)))
