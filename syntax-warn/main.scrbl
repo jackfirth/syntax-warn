@@ -29,11 +29,6 @@ cause subtle bugs, and so on. Syntax warnings are first class values attached to
 source code at compile time through syntax properties, and can be inspected by
 other code and tools.
 
-@defstruct*[warning-kind ([name symbol?]) #:prefab]{
- Structure representing a warning kind. @warn-tech{Syntax warnings} often have
- similar sources and causes, and it can be helpful to group them under a warning
- kind. The @racket[name] of the warning kind is used for reporting.}
-
 @defproc[(syntax-warning [#:message message string?]
                          [#:kind kind warning-kind?]
                          [#:stx stx syntax?]
@@ -57,6 +52,15 @@ other code and tools.
    @defproc[(syntax-warning-stx [warning syntax-warning?]) syntax?]
    @defproc[(syntax-warning-fix [warning syntax-warning?]) (or/c syntax? #f)])]{
  Accessors for fields of @warn-tech{syntax warnings}.}
+
+@defstruct*[warning-kind ([name symbol?]) #:prefab]{
+ Structure representing a warning kind. @warn-tech{Syntax warnings} often have
+ similar sources and causes, and it can be helpful to group them under a warning
+ kind. The @racket[name] of the warning kind is used for reporting.}
+
+@defform[(define-warning-kind id)]{
+ Binds @racket[id] as a @racket[warning-kind] whose name is the quoted form of
+ @racket[id].}
 
 @defproc[(syntax-warn [stx syntax?]
                       [warning syntax-warning?])
