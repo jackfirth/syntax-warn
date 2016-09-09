@@ -149,10 +149,13 @@
 
 (define (warn-modules resolved-module-paths)
   (define any-warned? (box #f))
+  (define warnings-namespace (make-base-namespace))
   (for ([modpath resolved-module-paths])
     (printf "raco warn: ~a\n" modpath)
     (flush-output)
-    (for ([warning (read-module-warnings modpath)])
+    (define warnings
+      (read-syntax-warnings/file modpath #:namespace warnings-namespace))
+    (for ([warning warnings])
       (set-box! any-warned? #t)
       (print-warning warning)))
   (unbox any-warned?))
