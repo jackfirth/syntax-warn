@@ -4,7 +4,6 @@
 
 (provide
  (contract-out
-  [struct warning-kind ([name symbol?])]
   [syntax-warning? predicate/c]
   [syntax-warning/fix? predicate/c]
   [syntax-warning-message (-> syntax-warning? string?)]
@@ -16,7 +15,9 @@
          #:kind warning-kind?
          #:stx syntax?)
         (#:fix syntax?)
-        syntax-warning?)])
+        syntax-warning?)]
+  [warning-kind? predicate/c]
+  [warning-kind-name (-> warning-kind? symbol?)])
  define-warning-kind)
 
 (require syntax/parse/define)
