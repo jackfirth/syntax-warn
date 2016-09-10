@@ -30,8 +30,8 @@ source code at compile time through syntax properties, and can be inspected by
 other code and tools.
 
 @defproc[(syntax-warning [#:message message string?]
-                         [#:kind kind warning-kind?]
                          [#:stx stx syntax?]
+                         [#:kind kind warning-kind? anonymous-warning]
                          [#:fix fix syntax? #f])
          syntax-warning?]{
  Constructs a @warn-tech{syntax warning} of kind @racket[kind] that identifies
@@ -53,26 +53,32 @@ other code and tools.
    @defproc[(syntax-warning-fix [warning syntax-warning?]) (or/c syntax? #f)])]{
  Accessors for fields of @warn-tech{syntax warnings}.}
 
-@defstruct*[warning-kind ([name symbol?]) #:prefab]{
- Structure representing a warning kind. @warn-tech{Syntax warnings} often have
- similar sources and causes, and it can be helpful to group them under a warning
- kind. The @racket[name] of the warning kind is used for reporting.}
+@defthing[warning-kind? predicate/c]{
+ Predicate recognizing warning kinds.}
+}
 
 @defform[(define-warning-kind id)]{
- Binds @racket[id] as a @racket[warning-kind] whose name is the quoted form of
- @racket[id].}
+ Binds @racket[id] as a @racket[warning-kind?] value whose name is the quoted
+ form of @racket[id]. @warn-tech{Syntax warnings} often have similar sources
+ and causes, and it can be helpful to group them under a warning kind.}
 
-@defproc[(syntax-warn [stx syntax?]
-                      [warning syntax-warning?])
-         syntax?]{
+@defproc[(warning-kind-name [kind warning-kind?]) symbol?]{
+ Returns the name of @racket[kind].}
+
+@defthing[anonymous-warning warning-kind?]{
+ The default warning kind for warnings that don't declare themselves as having
+ a particular kind.}
+
+@defproc[(syntax-warn [stx syntax?] [warning syntax-warning?]) syntax?]{
  Returns a syntax object equivalent to @racket[stx], but with @racket[warning]
  attached as a @warn-tech{syntax warning}. The syntax warning need not blame
  @racket[stx] as the source of the problem, this procedure merely provides the
  ability to attach warnings to syntax objects via syntax properties.
  @syntax-warn-examples[
+ (define-warning-kind identifier-capitalization-warning)
  (syntax-warn #'(foo Bar)
               (syntax-warning #:message "Don't capitalize the \"Bar\" identifier"
-                              #:kind (warning-kind 'identifier-capitalization)
+                              #:kind identifier-capitalization-warning
                               #:stx #'foo))]}
 
 @defproc[(syntax-warnings [stx syntax?]) (listof syntax?)]{
