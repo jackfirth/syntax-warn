@@ -108,7 +108,7 @@
          (define one-warning? (= num-warnings 1))
          (define dry-run? (equal? mode 'dry))
          (define message
-           (format "raco warn: ~a: ~a warning~a, ~a ~a~a\n"
+           (format "raco fix: ~a: ~a warning~a, ~a ~a~a\n"
                    mod
                    num-warnings
                    (if one-warning? "" "s")
@@ -162,7 +162,7 @@
       (list "Checking"
             "modules"
             "syntax-warn-test"
-            "raco warn:"
+            "raco fix:"
             "test-no-warnings/main.rkt"
             "test-warnings/main.rkt"
             "would fix"
