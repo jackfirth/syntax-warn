@@ -4,6 +4,7 @@
          racket/function
          racket/list
          racket/match
+         racket/string
          raco/command-name
          syntax/modread
          "main.rkt"
@@ -18,15 +19,6 @@
            "private/rackunit-string.rkt"))
 
 
-(define (srcloc-location-string srcloc)
-  (format "L~a:C~a:"
-          (srcloc-line srcloc)
-          (srcloc-column srcloc)))
-
-(module+ test
-  (check-equal? (srcloc-location-string (make-srcloc "foo" 1 2 3 4))
-                "L1:C2:"))
-
 (define (separator-format sep width)
   (define separator (make-string width sep))
   (string-append-lines separator "~a" separator ""))
@@ -35,30 +27,30 @@
   (check-equal? (separator-format #\X 4)
                 "XXXX\n~a\nXXXX\n"))
 
-(define (format-warning warning #:separator-char [sep #\-] #:separator-width [width 80])
+(define (list/filter . vs)
+  (filter values vs))
+
+(define (format-warning warning)
+  (define message (syntax-warning-message warning))
   (define stx (syntax-warning-stx warning))
   (define fix (syntax-warning-fix warning))
-  (define message (syntax-warning-message warning))
-  (define warning-message
-    (format "~a ~a"
-            (srcloc-location-string (syntax-srcloc stx))
-            message))
-  (define message-format
-    (if fix
-        (separator-format sep width)
-        "~a\n"))
-  (define (indent str) (string-append "  " str))
-  (format message-format
-          (if fix
-              (string-append-lines
-               warning-message
-               ""
-               (syntax->string/line-numbers stx #:indent-spaces 3)
-               ""
-               "suggested fix:"
-               ""
-               (syntax->string/line-numbers fix #:indent-spaces 3))
-              warning-message)))
+  (define kind (syntax-warning-kind warning))
+  (define kind-prefix
+    (and (not (equal? kind anonymous-warning))
+         (format "[~a]" (warning-kind-name kind))))
+  (define message-part
+    (string-join (list/filter kind-prefix message)))
+  (define warning-part
+    (string-indent-lines (syntax->string/line-numbers stx) 2))
+  (define fix-part/noindent
+    (and fix
+         (string-append "suggested fix:\n\n"
+                        (syntax->string/line-numbers fix))))
+  (define fix-part
+    (and fix-part/noindent
+         (string-indent-lines fix-part/noindent 2)))
+  (string-join (list/filter message-part warning-part fix-part)
+               "\n\n" #:after-last "\n"))
 
 (module+ test
   (define-warning-kind raco-test-kind)
@@ -68,7 +60,10 @@
        (syntax-warning #:message "not there"
                        #:kind raco-test-kind
                        #:stx #'here)))
-    (check-string-contains? formatted-warning "not there")
+    (check-string-contains-all? formatted-warning
+                                (list "not there"
+                                      "here"
+                                      "[raco-test-kind]"))
     (check-string-has-trailing-newline? formatted-warning))
   (test-case "Formatted warning with a suggested fix"
     (define test-stx #'foo)
@@ -80,9 +75,7 @@
                       #:stx test-stx
                       #:fix test-stx/fix))
     (define expected-message-strings
-      (list "----------------"
-            "L" "C"
-            "use a different name"
+      (list "use a different name"
             "foo"
             "suggested fix:"
             "bar"))
@@ -155,9 +148,11 @@
     (flush-output)
     (define warnings
       (read-syntax-warnings/file modpath #:namespace warnings-namespace))
-    (for ([warning warnings])
-      (set-box! any-warned? #t)
-      (print-warning warning)))
+    (when (not (empty? warnings))
+      (define warning-strs (map format-warning warnings))
+      (write-string
+       (string-join warning-strs "\n" #:before-first "\n" #:after-last "\n"))
+      (set-box! any-warned? #t)))
   (unbox any-warned?))
 
 (define (run-warn-command! module-args)
@@ -195,8 +190,8 @@
             "module"
             "raco warn: "
             "test-warnings/main.rkt"
-            "---------"
-            "phase order"))
+            "phase order"
+            "suggested fix"))
     (check-string-contains-all? (second warn-result)
                                 warn-expected-strs)
     (check-equal? (first no-warn-result) 0)
