@@ -30,8 +30,8 @@ source code at compile time through syntax properties, and can be inspected by
 other code and tools.
 
 @defproc[(syntax-warning [#:message message string?]
-                         [#:kind kind warning-kind?]
                          [#:stx stx syntax?]
+                         [#:kind kind warning-kind? anonymous-warning]
                          [#:fix fix syntax? #f])
          syntax-warning?]{
  Constructs a @warn-tech{syntax warning} of kind @racket[kind] that identifies
@@ -65,9 +65,11 @@ other code and tools.
 @defproc[(warning-kind-name [kind warning-kind?]) symbol?]{
  Returns the name of @racket[kind].}
 
-@defproc[(syntax-warn [stx syntax?]
-                      [warning syntax-warning?])
-         syntax?]{
+@defthing[anonymous-warning warning-kind?]{
+ The default warning kind for warnings that don't declare themselves as having
+ a particular kind.}
+
+@defproc[(syntax-warn [stx syntax?] [warning syntax-warning?]) syntax?]{
  Returns a syntax object equivalent to @racket[stx], but with @racket[warning]
  attached as a @warn-tech{syntax warning}. The syntax warning need not blame
  @racket[stx] as the source of the problem, this procedure merely provides the
