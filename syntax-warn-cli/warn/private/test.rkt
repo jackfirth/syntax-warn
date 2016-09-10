@@ -4,7 +4,7 @@
 
 (module+ test
   (require rackunit
-           warn/private/rackunit-string))
+           syntax/warn/private/rackunit-string))
 
 
 (struct system-result (code stdout stderr) #:transparent)
@@ -22,38 +22,38 @@
 
 (module+ test
   (test-case "Checking a module with no warnings"
-    (define result (system/result "raco warn -c warn/test-no-warnings"))
+    (define result (system/result "raco warn -c syntax/warn/test-no-warnings"))
     (check-equal? (system-result-stderr result) "")
     (check-equal? (system-result-code result) 0)
     (check-string-contains? (system-result-stdout result)
                             "Checking 1 module\n"))
   (test-case "Checking a module with warnings"
-    (define result (system/result "raco warn -c warn/test-warnings"))
+    (define result (system/result "raco warn -c syntax/warn/test-warnings"))
     (check-equal? (system-result-stderr result) "")
     (check-equal? (system-result-code result) 1)
     (check-string-contains-all? (system-result-stdout result)
                                 (list "Checking 1 module\n"
-                                      "syntax-warn-test/test-warnings/main.rkt"
+                                      "test-warnings/main.rkt"
                                       "phase order"
                                       "suggested fix"
                                       "require"
                                       "for-syntax")))
   (test-case "Fixing a module with no warnings"
-    (define result (system/result "raco fix -c warn/test-no-warnings"))
+    (define result (system/result "raco fix -c syntax/warn/test-no-warnings"))
     (check-equal? (system-result-stderr result) "")
     (check-equal? (system-result-code result) 0)
     (define expected-stdout-strings
       (list "Checking 1 module\n"
-            "syntax-warn-test/test-no-warnings/main.rkt"))
+            "test-no-warnings/main.rkt"))
     (check-string-contains-all? (system-result-stdout result)
                                 expected-stdout-strings))
   (test-case "Fixing a module with warnings in dry run"
-    (define result (system/result "raco fix -cD warn/test-warnings"))
+    (define result (system/result "raco fix -cD syntax/warn/test-warnings"))
     (check-equal? (system-result-stderr result) "")
     (check-equal? (system-result-code result) 0)
     (define expected-stdout-strings
       (list "Checking 1 module\n"
-            "syntax-warn-test/test-warnings/main.rkt"
+            "test-warnings/main.rkt"
             "would fix"))
     (check-string-contains-all? (system-result-stdout result)
                                 expected-stdout-strings)))

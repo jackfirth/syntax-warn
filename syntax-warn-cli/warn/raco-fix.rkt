@@ -4,17 +4,17 @@
          racket/file
          racket/match
          raco/command-name
+         syntax/warn
+         syntax/warn/private/syntax-srcloc
+         syntax/warn/private/syntax-string
          "private/module.rkt"
-         "private/string-delta.rkt"
-         "private/syntax-srcloc.rkt"
-         "private/syntax-string.rkt"
-         "main.rkt")
+         "private/string-delta.rkt")
 
 (module+ test
   (require racket/function
            racket/port
            rackunit
-           "private/rackunit-string.rkt"))
+           syntax/warn/private/rackunit-string))
 
 
 (struct fix-args (module-args run-mode) #:transparent)
@@ -153,7 +153,7 @@
 (module+ test
   (test-case "fix-warnings!"
     (define test-args
-      (fix-args (module-args 'package (list "syntax-warn-test"))
+      (fix-args (module-args 'package (list "syntax-warn-cli"))
                 'dry))
     (define (fix-test-warnings!)
       (with-output-to-string (thunk (fix-warnings! test-args))))
@@ -161,7 +161,7 @@
     (define expected-output-strs
       (list "Checking"
             "modules"
-            "syntax-warn-test"
+            "syntax-warn-cli"
             "raco fix:"
             "test-no-warnings/main.rkt"
             "test-warnings/main.rkt"

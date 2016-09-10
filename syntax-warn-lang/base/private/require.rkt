@@ -9,10 +9,10 @@
 (require (for-template racket/base)
          racket/match
          syntax/parse
-         "main.rkt"
-         "private/rackunit-syntax.rkt"
-         "private/syntax-format.rkt"
-         "private/syntax-srcloc.rkt")
+         syntax/warn
+         syntax/warn/private/rackunit-syntax
+         syntax/warn/private/syntax-format
+         syntax/warn/private/syntax-srcloc)
 
 (module+ test
   (require rackunit))

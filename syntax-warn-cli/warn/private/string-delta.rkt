@@ -15,7 +15,7 @@
                                   string?)]))
 
 (require racket/list
-         "syntax-srcloc.rkt")
+         syntax/warn/private/syntax-srcloc)
 
 (module+ test
   (require rackunit))
@@ -29,7 +29,7 @@
   (define overlapped (string-delta 30 20 "kdlfjs"))
   (define before (string-delta 3 5 "klf"))
   (define after (string-delta 45 23 "lkfdjalkf")))
-  
+
 
 (define (string-delta-end delta)
   (+ (string-delta-start delta) (string-delta-span delta)))

@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require (for-label warn
+@(require (for-label syntax/warn
                      racket/base
                      racket/contract
                      racket/function)
