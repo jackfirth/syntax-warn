@@ -1,16 +1,16 @@
 #lang scribble/manual
 
-@(require scribble/examples (for-label warn racket/base racket/stxparam racket/contract racket/function))
+@(require scribble/examples (for-label syntax/warn racket/base racket/stxparam racket/contract racket/function))
 
 @(define (warn-tech . pre-content)
    (apply tech #:key "syntax-warning" #:normalize? #f pre-content))
 @(define-syntax-rule (syntax-warn-examples example ...)
-   (examples #:eval (make-base-eval #:lang 'racket/base '(require warn)) example ...))
+   (examples #:eval (make-base-eval #:lang 'racket/base '(require syntax/warn)) example ...))
 @(define-syntax-rule (document-syntax-parameter id pre-flow ...)
    (defform #:kind "syntax parameter" #:id id id pre-flow ...))
 
 @title{Syntax Warnings}
-@defmodule[warn]
+@defmodule[syntax/warn]
 @author[@author+email["Jack Firth" "jackhfirth@gmail.com"]]
 
 This library provides forms for working with @warn-tech{syntax warnings}. Library

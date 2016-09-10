@@ -1,7 +1,6 @@
 #lang info
 (define name "syntax-warn-lang")
 (define collection "racket")
-(define deps
-  '(("base" #:version "6.4") "syntax-warn"))
-(define scribblings
-  '(("base/warn.scrbl" () (library) "warn-lang")))
+(define deps '("base"
+               "syntax-warn-base"))
+(define build-deps '("rackunit-lib"))

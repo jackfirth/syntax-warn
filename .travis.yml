@@ -4,8 +4,8 @@ env:
   global:
     - RACKET_DIR=~/racket
     - DEPLOY_VERSION="6.6"
-    - SCRIBBLE_ENTRYPOINT_FILE="syntax-warn/main.scrbl"
-    - PACKAGES="syntax-warn syntax-warn-lang syntax-warn-test"
+    - SCRIBBLE_ENTRYPOINT_FILE="syntax-warn-doc/main.scrbl"
+    - PACKAGES="syntax-warn-base syntax-warn-lang syntax-warn-cli syntax-warn-doc syntax-warn"
   matrix:
     - RACKET_VERSION=6.4
     - RACKET_VERSION=6.5
@@ -18,13 +18,11 @@ before_install:
   - raco pkg install --auto doc-coverage
   - '[[ $SKIP_COVER ]] || raco pkg install --auto cover cover-coveralls'
 install:
-  - raco pkg install --auto
-      $TRAVIS_BUILD_DIR/syntax-warn
-      $TRAVIS_BUILD_DIR/syntax-warn-lang
-      $TRAVIS_BUILD_DIR/syntax-warn-test
+  - raco pkg install --auto --link ${PACKAGES}
 script:
   - raco test -p ${PACKAGES}
   - raco doc-coverage warn
+  - raco setup --check-pkg-deps --pkgs ${PACKAGES}
   - '[[ $SKIP_COVER ]] || raco cover -f coveralls -d $TRAVIS_BUILD_DIR/coverage -p ${PACKAGES}'
 after_success:
   - echo "Starting deploy"

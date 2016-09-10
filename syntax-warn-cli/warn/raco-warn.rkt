@@ -7,16 +7,16 @@
          racket/string
          raco/command-name
          syntax/modread
-         "main.rkt"
-         "private/module.rkt"
-         "private/string-lines.rkt"
-         "private/syntax-srcloc.rkt"
-         "private/syntax-string.rkt")
+         syntax/warn
+         syntax/warn/private/string-lines
+         syntax/warn/private/syntax-srcloc
+         syntax/warn/private/syntax-string
+         "private/module.rkt")
 
 (module+ test
   (require racket/port
            rackunit
-           "private/rackunit-string.rkt"))
+           syntax/warn/private/rackunit-string))
 
 
 (define (separator-format sep width)
@@ -174,10 +174,10 @@
       (list code (get-output-string output)))
     (define no-warn-result
       (test-command (module-args 'collection
-                                 (list "warn/test-no-warnings"))))
+                                 (list "syntax/warn/test-no-warnings"))))
     (define warn-result
       (test-command (module-args 'collection
-                                 (list "warn/test-warnings"))))
+                                 (list "syntax/warn/test-warnings"))))
     (define no-warn-expected-strs
       (list "Checking"
             "module"
