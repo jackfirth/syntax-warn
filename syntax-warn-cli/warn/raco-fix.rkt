@@ -103,7 +103,7 @@
                                    #:num-deltas num-deltas
                                    #:run-mode mode)
   (cond [(zero? num-fixes)
-         (write-string (format "raco warn: ~a\n" mod))]
+         (write-string (format "raco fix: ~a\n" mod))]
         [else
          (define one-warning? (= num-warnings 1))
          (define dry-run? (equal? mode 'dry))

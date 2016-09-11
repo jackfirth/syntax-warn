@@ -21,7 +21,7 @@ install:
   - raco pkg install --auto --link ${PACKAGES}
 script:
   - raco test -p ${PACKAGES}
-  - raco doc-coverage warn
+  - raco doc-coverage warn racket/base/warn
   - raco setup --check-pkg-deps --pkgs ${PACKAGES}
   - '[[ $SKIP_COVER ]] || raco cover -f coveralls -d $TRAVIS_BUILD_DIR/coverage -p ${PACKAGES}'
 after_success:

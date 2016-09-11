@@ -36,8 +36,7 @@
   (define fix (syntax-warning-fix warning))
   (define kind (syntax-warning-kind warning))
   (define kind-prefix
-    (and (not (equal? kind anonymous-warning))
-         (format "[~a]" (warning-kind-name kind))))
+    (and kind (format "[~a]" (warning-kind-name kind))))
   (define message-part
     (string-join (list/filter kind-prefix message)))
   (define warning-part

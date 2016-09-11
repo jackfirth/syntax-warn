@@ -4,12 +4,11 @@
 
 (provide
  (contract-out
-  [anonymous-warning warning-kind?]
   [syntax-warning? predicate/c]
   [syntax-warning/fix? predicate/c]
   [syntax-warning-message (-> syntax-warning? string?)]
-  [syntax-warning-kind (-> syntax-warning? warning-kind?)]
   [syntax-warning-stx (-> syntax-warning? syntax?)]
+  [syntax-warning-kind (-> syntax-warning? (or/c warning-kind? #f))]
   [syntax-warning-fix (-> syntax-warning? (or/c syntax? #f))]
   [syntax-warning
    (->* (#:message string? #:stx syntax?)
@@ -30,12 +29,11 @@
 (define-simple-macro (define-warning-kind name:id)
   (define name (warning-kind 'name)))
 
-(define-warning-kind anonymous-warning)
-
 (module+ test
+  (define-warning-kind test-warning)
   (test-case "define-warning-kind"
-    (check-pred warning-kind? anonymous-warning)
-    (check-equal? (warning-kind-name anonymous-warning) 'anonymous-warning)))
+    (check-pred warning-kind? test-warning)
+    (check-equal? (warning-kind-name test-warning) 'test-warning)))
 
 (struct syntax-warning
   (message kind stx fix)
@@ -45,7 +43,7 @@
 
 (define (syntax-warning #:message message
                         #:stx stx
-                        #:kind [kind anonymous-warning]
+                        #:kind [kind #f]
                         #:fix [fix #f])
   (make-syntax-warning message kind stx fix))
 
@@ -59,8 +57,8 @@
         (syntax-warning #:message "Test warning" #:stx here-stx))
       (check-pred syntax-warning? test-warning)
       (check-equal? (syntax-warning-message test-warning) "Test warning")
-      (check-equal? (syntax-warning-kind test-warning) anonymous-warning)
       (check-equal? (syntax-warning-stx test-warning) here-stx)
+      (check-false (syntax-warning-kind test-warning))
       (check-false (syntax-warning-fix test-warning)))
     (test-case "with fix and kind"
       (define-warning-kind test-kind)
