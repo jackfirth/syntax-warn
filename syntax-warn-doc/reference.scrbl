@@ -29,8 +29,8 @@ detected and manipulated by the tools outlined in @secref{syntax-warn-cli}.
 
 @deftogether[
  (@defproc[(syntax-warning-message [warning syntax-warning?]) string?]
-   @defproc[(syntax-warning-kind [warning syntax-warning?]) warning-kind?]
    @defproc[(syntax-warning-stx [warning syntax-warning?]) syntax?]
+   @defproc[(syntax-warning-kind [warning syntax-warning?]) (or/c warning-kind? #f)]
    @defproc[(syntax-warning-fix [warning syntax-warning?]) (or/c syntax? #f)])]{
  Accessors for fields of @warn-tech{syntax warnings}.}
 
