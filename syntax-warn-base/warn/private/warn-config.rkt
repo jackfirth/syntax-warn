@@ -4,14 +4,14 @@
 
 (provide
  (contract-out
-  [empty-syntax-warning-config syntax-warning-config?]
+  [empty-warning-config warning-config?]
   [kind-config? flat-contract?]
-  [syntax-warning-config
-   (->* () (#:kinds kind-config?) syntax-warning-config?)]
-  [syntax-warning-config? predicate/c]
-  [syntax-warning-config-kinds (-> syntax-warning-config? kind-config?)]
-  [syntax-warning-config-merge
-   (->* () #:rest (listof syntax-warning-config?) syntax-warning-config?)]))
+  [suppress (->rest warning-kind? warning-config?)]
+  [unsuppress (->rest warning-kind? warning-config?)]
+  [warning-config (->* () (#:kinds kind-config?) warning-config?)]
+  [warning-config? predicate/c]
+  [warning-config-kinds (-> warning-config? kind-config?)]
+  [warning-config-merge (->rest warning-config? warning-config?)]))
 
 (require racket/function
          "warn.rkt")
@@ -20,30 +20,30 @@
   (require rackunit))
 
 
+(define (->rest arg-contract result-contract)
+  (->* () #:rest (listof arg-contract) result-contract))
+
 (define kind-config?
   (hash/c warning-kind?
           (or/c 'suppress 'unsuppress)
           #:immutable #t
           #:flat? #t))
 
-(struct syntax-warning-config
+(struct warning-config
   (kinds)
   #:transparent
   #:omit-define-syntaxes
-  #:constructor-name make-syntax-warning-config)
+  #:constructor-name make-warning-config)
 
-(define (syntax-warning-config #:kinds [kind-config (hash)])
-  (make-syntax-warning-config kind-config))
+(define (warning-config #:kinds [kind-config (hash)])
+  (make-warning-config kind-config))
 
-(define empty-syntax-warning-config (syntax-warning-config))
+(define empty-warning-config (warning-config))
 
 (module+ test
-  (check-equal? (syntax-warning-config #:kinds (hash))
-                (make-syntax-warning-config (hash)))
-  (check-equal? (syntax-warning-config)
-                (make-syntax-warning-config (hash)))
-  (check-equal? (syntax-warning-config)
-                empty-syntax-warning-config))
+  (check-equal? (warning-config #:kinds (hash)) (make-warning-config (hash)))
+  (check-equal? (warning-config) (make-warning-config (hash)))
+  (check-equal? (warning-config) empty-warning-config))
 
 (define (hash-merge merge-values hash1 hash2)
   (for/fold ([merged hash1])
@@ -55,13 +55,13 @@
   (hash-merge (lambda (a b) b) kinds1 kinds2))
 
 (define (syntax-warning-config-merge-two config1 config2)
-  (define kinds1 (syntax-warning-config-kinds config1))
-  (define kinds2 (syntax-warning-config-kinds config2))
-  (syntax-warning-config #:kinds (kind-config-merge-two kinds1 kinds2)))
+  (define kinds1 (warning-config-kinds config1))
+  (define kinds2 (warning-config-kinds config2))
+  (warning-config #:kinds (kind-config-merge-two kinds1 kinds2)))
 
-(define (syntax-warning-config-merge . configs)
+(define (warning-config-merge . configs)
   (foldl syntax-warning-config-merge-two
-         empty-syntax-warning-config
+         empty-warning-config
          (reverse configs)))
 
 (module+ test
@@ -73,18 +73,38 @@
     (define-warning-kind kind4)
     (define-warning-kind kind5)
     (define config1
-      (syntax-warning-config #:kinds (hash kind1 'suppress
-                                           kind3 'suppress
-                                           kind4 'unsuppress)))
+      (warning-config #:kinds (hash kind1 'suppress
+                                    kind3 'suppress
+                                    kind4 'unsuppress)))
     (define config2
-      (syntax-warning-config #:kinds (hash kind2 'unsuppress
-                                           kind3 'unsuppress
-                                           kind4 'suppress)))
+      (warning-config #:kinds (hash kind2 'unsuppress
+                                    kind3 'unsuppress
+                                    kind4 'suppress)))
     (define config3
-      (syntax-warning-config #:kinds (hash kind5 'suppress)))
-    (check-equal? (syntax-warning-config-merge config1 config2 config3)
-                  (syntax-warning-config #:kinds (hash kind1 'suppress
-                                                       kind2 'unsuppress
-                                                       kind3 'unsuppress
-                                                       kind4 'suppress
-                                                       kind5 'suppress)))))
+      (warning-config #:kinds (hash kind5 'suppress)))
+    (check-equal? (warning-config-merge config1 config2 config3)
+                  (warning-config #:kinds (hash kind1 'suppress
+                                                kind2 'unsuppress
+                                                kind3 'unsuppress
+                                                kind4 'suppress
+                                                kind5 'suppress)))))
+
+(define ((kinds-syntax-warnings-config setting) . kinds)
+  (define kinds-config
+    (for/hash ([kind (in-list kinds)])
+      (values kind setting)))
+  (warning-config #:kinds kinds-config))
+
+(define suppress (kinds-syntax-warnings-config 'suppress))
+(define unsuppress (kinds-syntax-warnings-config 'unsuppress))
+
+(module+ test
+  (test-case "suppression sugar procedures"
+    (define-warning-kind kind1)
+    (define-warning-kind kind2)
+    (test-equal? "suppress" (suppress kind1 kind2)
+                 (warning-config #:kinds (hash kind1 'suppress
+                                               kind2 'suppress)))
+    (test-equal? "unsuppress" (unsuppress kind1 kind2)
+                 (warning-config #:kinds (hash kind1 'unsuppress
+                                               kind2 'unsuppress)))))
