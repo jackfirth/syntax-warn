@@ -1,5 +1,6 @@
 #lang info
 (define name "syntax-warn-cli")
+(define version "0.1")
 (define collection "syntax")
 (define raco-commands
   '(("warn" (submod syntax/warn/raco-warn main) "Check for syntax warnings" 20)
