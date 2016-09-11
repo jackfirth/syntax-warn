@@ -12,7 +12,11 @@
                        warning-config?)]
   [warning-config? predicate/c]
   [warning-config-suppressions (-> warning-config? suppressions-config?)]
-  [warning-config-merge (->rest warning-config? warning-config?)]))
+  [warning-config-merge (->rest warning-config? warning-config?)]
+  [require-warning-config
+   (->* ((or/c module-path? resolved-module-path? module-path-index?))
+        (#:submod-name symbol? #:binding-name symbol?)
+        warning-config?)]))
 
 (require racket/function
          "warn.rkt")
@@ -111,3 +115,10 @@
     (test-equal? "unsuppress" (unsuppress kind1 kind2)
                  (warning-config #:suppressions (hash kind1 'unsuppress
                                                       kind2 'unsuppress)))))
+
+(define (require-warning-config modpath
+                                #:submod-name [submod-name 'warning-config]
+                                #:binding-name [binding-name 'config])
+  (dynamic-require (list 'submod modpath submod-name)
+                   binding-name
+                   (thunk empty-warning-config)))
