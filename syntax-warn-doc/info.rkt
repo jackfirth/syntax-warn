@@ -1,7 +1,7 @@
 #lang info
 (define name "syntax-warn-doc")
 (define scribblings
-  '(("main.scrbl" () (library) "syntax-warn")))
+  '(("main.scrbl" (multi-page) (library) "syntax-warn")))
 (define deps '("scribble-lib"
                "scribble-text-lib"
                "base"))
