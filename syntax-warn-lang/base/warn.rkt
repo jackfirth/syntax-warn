@@ -1,6 +1,12 @@
 #lang racket/base
 
-(module+ initial-bindings
+(require racket/contract
+         "private/require.rkt")
+
+(provide (recontract-out require:phase-order))
+
+
+(module initial-bindings racket/base
 
   (require (for-syntax racket/base
                        syntax/parse
@@ -13,7 +19,7 @@
 
   (define-syntax (require stx)
     (define stx/warn
-      (warn-require-phase-order (syntax-local-introduce stx)))
+      (syntax-warn/require-phase-order (syntax-local-introduce stx)))
     (define expanded-stx
       (syntax-parse stx
         [(_ spec ...) #'(base-require spec ...)]))

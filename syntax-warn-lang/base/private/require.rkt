@@ -4,7 +4,8 @@
 
 (provide
  (contract-out
-  [warn-require-phase-order (-> syntax? syntax?)]))
+  [require:phase-order warning-kind?]
+  [syntax-warn/require-phase-order (-> syntax? syntax?)]))
 
 (require (for-template racket/base)
          racket/match
@@ -48,14 +49,14 @@
                                 foo
                                 "bar.rkt")))
 
-(define-warning-kind require-phase-order)
+(define-warning-kind require:phase-order)
 
 (define phase-order-message
   (string-append
    "Require specs are not in phase order "
    "(phase order is syntax, template, label, meta, then plain)"))
 
-(define (warn-require-phase-order stx)
+(define (syntax-warn/require-phase-order stx)
   (syntax-parse stx
     [(req-id:id clause ...)
      (define clause-stxs (syntax->list #'(clause ...)))
@@ -65,7 +66,7 @@
        [else
         (define warning
           (syntax-warning #:message phase-order-message
-                          #:kind require-phase-order
+                          #:kind require:phase-order
                           #:stx stx
                           #:fix (build-formatted-phase-ordered-stx stx)))
         (syntax-warn stx warning)])]))
