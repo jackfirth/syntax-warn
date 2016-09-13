@@ -20,6 +20,16 @@ a message, the offending source code, and a suggested fix (if present).
 If any warnings are found the command exits as a failure, making it
 suitable for use in continuous integration systems.
 
+Not all warnings need cause a failure. The @exec{raco warn} command
+allows certain warnings to be @italic{suppressed} by configuration.
+For every module that @exec{raco warn} examines, the command looks
+for a @config-tech{warning configuration} value named @racket[config]
+provided by that module's @racket['warning-config] submodule. If this
+module or the expected binding isn't present, @racket[empty-warning-config]
+is used. This allows for per-module suppression of particular kinds
+of warnings, see the documentation of @racket[warning-config] for
+details.
+
 The @exec{raco warn} command accepts any number of arguments along with
 the following flags:
 
@@ -42,7 +52,15 @@ the following flags:
  @item{@Flag{c} or @DFlag{collection} --- Shorthand for @exec{--arg-kind
    collection}.}
  @item{@Flag{p} or @DFlag{package} --- Shorthand for @exec{--arg-kind
-   package}.}]
+   package}.}
+ @item{@Flag{config-submod} --- Sets the name of the submodule to
+  look for warning configuration in. Required prior to loading of
+  the surrounding module to check. Defaults to @racket['warning-config].}
+ @item{@Flag{config-submod-binding} --- Sets the name of the value
+  to look for in the warning configuration submodule. Defaults to
+  @racket[config]. The warning configuration submodule should
+  @racket[provide] a @racket[warning-configuration?] value under this
+  name.}]
 
 @section{@exec{raco fix}: Fixing Syntax Warnings}
 
@@ -68,3 +86,7 @@ the following flags:
  @item{@Flag{D} or @DFlag{dry-run} --- Sets the run mode to @italic{
    dry run}. In a dry run, @exec{raco fix} performs no file writes and
   merely outputs what it would fix in which modules.}]
+
+In addition, the @exec{raco fix} command looks for @config-tech{warning
+ configuration} in the same way as @exec{raco warn} with the same flags
+to control this behavior.
