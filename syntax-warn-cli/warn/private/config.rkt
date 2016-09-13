@@ -4,15 +4,15 @@
 
 (provide
  (contract-out
-  [config-submod-args
+  [submod-config-args
    (->* () (#:submod-name (or/c symbol? #f) #:binding-name (or/c symbol? #f))
-        config-submod-args?)]
-  [config-submod-args? predicate/c]
-  [config-submod-args-submod-name (-> config-submod-args? symbol?)]
-  [config-submod-args-binding-name (-> config-submod-args? symbol?)]
+        submod-config-args?)]
+  [submod-config-args? predicate/c]
+  [submod-config-args-submod (-> submod-config-args? symbol?)]
+  [submod-config-args-binding (-> submod-config-args? symbol?)]
   [require-warning-config-submod
    (-> (or/c module-path? resolved-module-path? module-path-index?)
-       config-submod-args?
+       submod-config-args?
        warning-config?)]))
 
 (require racket/function
@@ -22,28 +22,28 @@
   (require rackunit))
 
 
-(struct config-submod-args
-  (submod-name binding-name)
+(struct submod-config-args
+  (submod binding)
   #:transparent
   #:omit-define-syntaxes
-  #:constructor-name make-config-submod-args)
+  #:constructor-name make-submod-config-args)
 
-(define (config-submod-args #:submod-name [submod-name #f]
-                            #:binding-name [binding-name #f])
-  (make-config-submod-args (or submod-name 'warning-config)
-                           (or binding-name 'config)))
+(define (submod-config-args #:submod-name [submod #f]
+                            #:binding-name [binding #f])
+  (make-submod-config-args (or submod 'warning-config)
+                           (or binding 'config)))
 
 (module+ test
   (test-case "config-submod-args"
-    (check-equal? (config-submod-args)
-                  (make-config-submod-args 'warning-config 'config))
-    (check-equal? (config-submod-args #:submod-name 'foo
+    (check-equal? (submod-config-args)
+                  (make-submod-config-args 'warning-config 'config))
+    (check-equal? (submod-config-args #:submod-name 'foo
                                       #:binding-name 'bar)
-                  (make-config-submod-args 'foo 'bar))))
+                  (make-submod-config-args 'foo 'bar))))
 
 (define (require-warning-config-submod modpath config-args)
-  (define submod-name (config-submod-args-submod-name config-args))
-  (define binding-name (config-submod-args-binding-name config-args))
+  (define submod-name (submod-config-args-submod config-args))
+  (define binding-name (submod-config-args-binding config-args))
   (with-handlers ([exn:fail? (const empty-warning-config)])
     (dynamic-require (list 'submod modpath submod-name)
                      binding-name

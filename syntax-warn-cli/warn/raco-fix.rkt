@@ -8,6 +8,7 @@
          syntax/warn/private/warn-config
          syntax/warn/private/syntax-srcloc
          syntax/warn/private/syntax-string
+         "private/command.rkt"
          "private/config.rkt"
          "private/module.rkt"
          "private/string-delta.rkt")
@@ -17,117 +18,6 @@
            racket/port
            rackunit
            syntax/warn/private/rackunit-string))
-
-
-(struct fix-args
-  (module-args run-mode config-submod)
-  #:transparent
-  #:omit-define-syntaxes
-  #:constructor-name make-fix-args)
-
-(define (fix-args #:module [mod #f]
-                  #:run-mode [run-mode 'wet]
-                  #:config-submod [config-submod #f])
-  (make-fix-args (or mod (module-args 'file '()))
-                 run-mode
-                 (or config-submod (config-submod-args))))
-
-(define (parse-warn-command!)
-  (define kind-param (make-parameter 'file))
-  (define run-mode-param (make-parameter 'wet))
-  (define config-submod-param (make-parameter #f))
-  (define config-submod-binding-param (make-parameter #f))
-  (command-line
-   #:program (short-program+command-name)
-   #:once-any
-   ["--arg-kind" kind
-                 ("How to interpret the arguments as modules"
-                  "One of file, directory, collection, or package"
-                  "Defaults to file")
-                 (define kind-sym (string->symbol kind))
-                 (check-kind! kind-sym)
-                 (kind-param kind-sym)]
-   [("-f" "--file-args") ("Interpret the arguments as files"
-                          "Files are required as modules and checked"
-                          "Equivalent to \"--arg-kind file\", default behavior")
-                         (kind-param 'file)]
-   [("-d" "--directory-args") ("Interpret the arguments as directories"
-                               "Modules in directories are recursively checked"
-                               "Equivalent to \"--arg-kind directory\"")
-                              (kind-param 'directory)]
-   [("-c" "--collection-args") ("Interpet the arguments as collections"
-                                "Modules in collections are recursively checked"
-                                "Equivalent to \"--arg-kind collection\"")
-                               (kind-param 'collection)]
-   [("-p" "--package-args") ("Interpret the arguments as packages"
-                             "Modules in packages are recursively checked"
-                             "Equivalent to \"--arg-kind package\"")
-                            (kind-param 'package)]
-   #:once-each
-   [("-D" "--dry-run") "Don't actually write any fixes to files"
-                       (run-mode-param 'dry)]
-   #:once-each
-   ["--config-submod" submod
-                      ("Name of the submodule to look for warning configuration in"
-                       "Defaults to 'warning-config")
-                      (config-submod-param (string->symbol submod))]
-   ["--config-submod-binding" submod-binding
-                              ("Name of the binding to require from configuration submodules"
-                               "Defaults to 'config")
-                              (config-submod-binding-param
-                               (string->symbol submod-binding))]
-   #:args (arg . args)
-   (fix-args
-    #:module (module-args (kind-param) (cons arg args))
-    #:run-mode (run-mode-param)
-    #:config-submod (config-submod-args
-                     #:submod-name (config-submod-param)
-                     #:binding-name (config-submod-binding-param)))))
-
-(define (check-kind! k)
-  (unless (member k (list 'file 'directory 'collection 'package))
-    (raise-arguments-error
-     (string->symbol (short-program+command-name))
-     "expected an arg kind of file, directory, collection, or package"
-     "--arg-kind" k)))
-
-(module+ test
-  (test-case "parse-warn-command! package args"
-    (define args
-      (vector "-p" "foo" "bar" "baz"))
-    (parameterize ([current-command-line-arguments args])
-      (check-equal? (parse-warn-command!)
-                    (fix-args #:module (module-args 'package
-                                                    (list "foo" "bar" "baz"))
-                              #:run-mode 'wet))))
-  (test-case "parse-warn-command! dry mode"
-    (define args
-      (vector "-Dp" "foo" "bar" "baz"))
-    (parameterize ([current-command-line-arguments args])
-      (check-equal? (parse-warn-command!)
-                    (fix-args #:module (module-args 'package
-                                                    (list "foo" "bar" "baz"))
-                              #:run-mode 'dry))))
-  (test-case "parse-warn-command! kind arg"
-    (define args
-      (vector "--arg-kind" "collection" "foo" "bar"))
-    (parameterize ([current-command-line-arguments args])
-      (check-equal? (parse-warn-command!)
-                    (fix-args #:module (module-args 'collection
-                                                    (list "foo" "bar"))
-                              #:run-mode 'wet))))
-  (test-case "parse-warn-command! bad kind"
-    (define args
-      (vector "--arg-kind" "nonsense" "foo" "bar"))
-    (parameterize ([current-command-line-arguments args])
-      (check-exn exn:fail:contract? parse-warn-command!))))
-
-(define (write-module-count-message mod-count)
-  (match mod-count
-    [(== 0) (write-string "No modules found\n")]
-    [(== 1) (write-string "Checking 1 module\n")]
-    [num-modules (write-string (format "Checking ~a modules\n" num-modules))])
-  (flush-output))
 
 (define (write-warning-fix-message #:module-path mod
                                    #:num-warnings num-warnings
@@ -160,9 +50,9 @@
                 (syntax->string (syntax-warning-fix warning/fix))))
 
 (define (fix-warnings! args)
-  (define mod-args (fix-args-module-args args))
+  (define mod-args (fix-args-module args))
   (define mode (fix-args-run-mode args))
-  (define submod-args (fix-args-config-submod args))
+  (define submod-args (fix-args-submod-config args))
   (define mods (module-args->modules mod-args))
   (write-module-count-message (length mods))
   (define warnings-namespace (make-base-namespace))
@@ -206,4 +96,4 @@
     (check-string-contains-all? (fix-test-warnings!)
                                 expected-output-strs)))
 
-(module+ main (fix-warnings! (parse-warn-command!)))
+(module+ main (fix-warnings! (parse-fix-command!)))
