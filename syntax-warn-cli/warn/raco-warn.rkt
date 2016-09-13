@@ -8,10 +8,13 @@
          raco/command-name
          syntax/modread
          syntax/warn
+         syntax/warn/private/warn-config
          syntax/warn/private/string-lines
          syntax/warn/private/syntax-srcloc
          syntax/warn/private/syntax-string
-         "private/module.rkt")
+         "private/module.rkt"
+         "private/command.rkt"
+         "private/config.rkt")
 
 (module+ test
   (require racket/port
@@ -85,68 +88,17 @@
   (printf (format-warning warning))
   (flush-output))
 
-(define (parse-warn-command!)
-  (define kind-param (make-parameter 'file))
-  (command-line
-   #:program (short-program+command-name)
-   #:once-any
-   ["--arg-kind" kind
-                 ("How to interpret the arguments as modules"
-                  "One of file, directory, collection, or package"
-                  "Defaults to file")
-                 (define kind-sym (string->symbol kind))
-                 (check-kind! kind-sym)
-                 (kind-param kind-sym)]
-   [("-f" "--file-args") ("Interpret the arguments as files"
-                          "Files are required as modules and checked"
-                          "Equivalent to \"--arg-kind file\", default behavior")
-                         (kind-param 'file)]
-   [("-d" "--directory-args") ("Interpret the arguments as directories"
-                               "Modules in directories are recursively checked"
-                               "Equivalent to \"--arg-kind directory\"")
-                              (kind-param 'directory)]
-   [("-c" "--collection-args") ("Interpet the arguments as collections"
-                                "Modules in collections are recursively checked"
-                                "Equivalent to \"--arg-kind collection\"")
-                               (kind-param 'collection)]
-   [("-p" "--package-args") ("Interpret the arguments as packages"
-                             "Modules in packages are recursively checked"
-                             "Equivalent to \"--arg-kind package\"")
-                            (kind-param 'package)]
-   #:args (arg . args)
-   (module-args (kind-param) (cons arg args))))
-
-(define (check-kind! k)
-  (unless (member k (list 'file 'directory 'collection 'package))
-    (raise-arguments-error
-     (string->symbol (short-program+command-name))
-     "expected an arg kind of file, directory, collection, or package"
-     "--arg-kind" k)))
-
-(module+ test
-  (test-case "parse-warn-command!"
-    (define (parse/args args)
-      (parameterize ([current-command-line-arguments args])
-        (parse-warn-command!)))
-    (check-equal? (parse/args (vector "-f" "foo" "bar"))
-                  (module-args 'file (list "foo" "bar")))
-    (check-equal? (parse/args (vector "-d" "foo" "bar"))
-                  (module-args 'directory (list "foo" "bar")))
-    (check-equal? (parse/args (vector "-c" "foo" "bar"))
-                  (module-args 'collection (list "foo" "bar")))
-    (check-equal? (parse/args (vector "-p" "foo" "bar"))
-                  (module-args 'package (list "foo" "bar")))
-    (check-equal? (parse/args (vector "--arg-kind" "file" "foo" "bar"))
-                  (module-args 'file (list "foo" "bar")))))
-
-(define (warn-modules resolved-module-paths)
+(define (warn-modules resolved-module-paths config-submod-args)
   (define any-warned? (box #f))
   (define warnings-namespace (make-base-namespace))
   (for ([modpath resolved-module-paths])
     (printf "raco warn: ~a\n" modpath)
     (flush-output)
-    (define warnings
+    (define all-warnings
       (read-syntax-warnings/file modpath #:namespace warnings-namespace))
+    (define config
+      (require-warning-config-submod modpath config-submod-args))
+    (define warnings (filter-unsuppressed-warnings all-warnings config))
     (when (not (empty? warnings))
       (define warning-strs (map format-warning warnings))
       (write-string
@@ -154,14 +106,12 @@
       (set-box! any-warned? #t)))
   (unbox any-warned?))
 
-(define (run-warn-command! module-args)
+(define (run-warn-command! warn-args)
+  (define module-args (warn-args-module warn-args))
+  (define config-args (warn-args-submod-config warn-args))
   (define modules (module-args->modules module-args))
-  (match (length modules)
-    [(== 0) (printf "No modules found\n")]
-    [(== 1) (printf "Checking 1 module\n")]
-    [num-modules (printf "Checking ~a modules\n" num-modules)])
-  (flush-output)
-  (if (warn-modules modules) 1 0))
+  (write-module-count-message (length modules))
+  (if (warn-modules modules config-args) 1 0))
 
 (module+ test
   (test-case "run-warn-command!"
@@ -171,30 +121,43 @@
         (parameterize ([current-output-port output])
           (run-warn-command! args)))
       (list code (get-output-string output)))
-    (define no-warn-result
-      (test-command (module-args 'collection
-                                 (list "syntax/warn/test-no-warnings"))))
-    (define warn-result
-      (test-command (module-args 'collection
-                                 (list "syntax/warn/test-warnings"))))
-    (define no-warn-expected-strs
-      (list "Checking"
-            "module"
-            "raco warn: "
-            "test-no-warnings/main.rkt"))
-    (check-string-contains-all? (second no-warn-result)
-                                no-warn-expected-strs)
-    (define warn-expected-strs
-      (list "Checking"
-            "module"
-            "raco warn: "
-            "test-warnings/main.rkt"
-            "phase order"
-            "suggested fix"))
-    (check-string-contains-all? (second warn-result)
-                                warn-expected-strs)
-    (check-equal? (first no-warn-result) 0)
-    (check-equal? (first warn-result) 1)))
+    (test-case "no-warnings"
+      (define no-warn-result
+        (test-command
+         (warn-args
+          #:module (module-args 'collection
+                                (list "syntax/warn/test-no-warnings")))))
+      (define no-warn-expected-strs
+        (list "Checking"
+              "module"
+              "raco warn: "
+              "test-no-warnings/main.rkt"))
+      (check-string-contains-all? (second no-warn-result)
+                                  no-warn-expected-strs)
+      (check-equal? (first no-warn-result) 0))
+    (test-case "warnings"
+      (define warn-result
+        (test-command
+         (warn-args
+          #:module (module-args 'collection
+                                (list "syntax/warn/test-warnings")))))
+      (define warn-expected-strs
+        (list "Checking"
+              "module"
+              "raco warn: "
+              "test-warnings/main.rkt"
+              "phase order"
+              "suggested fix"))
+      (check-string-contains-all? (second warn-result)
+                                  warn-expected-strs)
+      (check-equal? (first warn-result) 1))
+    (test-case "warnings-suppressed"
+      (define result
+        (test-command
+         (warn-args
+          #:module (module-args 'collection
+                                (list "syntax/warn/test-warnings-suppressed")))))
+      (check-equal? (first result) 0))))
 
 (module+ main
   (exit (run-warn-command! (parse-warn-command!))))

@@ -24,7 +24,7 @@
 (define (module-args->modules args)
   (define strs (module-args-strs args))
   (case (module-args-kind args)
-    [(file) strs]
+    [(file) (map string->path strs)]
     [(directory) (append-map directory-warn-modules strs)]
     [(collection) (append-map collection-warn-modules strs)]
     [(package) (append-map package-warn-modules strs)]))
