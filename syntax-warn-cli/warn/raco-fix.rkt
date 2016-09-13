@@ -5,8 +5,10 @@
          racket/match
          raco/command-name
          syntax/warn
+         syntax/warn/private/warn-config
          syntax/warn/private/syntax-srcloc
          syntax/warn/private/syntax-string
+         "private/config.rkt"
          "private/module.rkt"
          "private/string-delta.rkt")
 
@@ -17,11 +19,24 @@
            syntax/warn/private/rackunit-string))
 
 
-(struct fix-args (module-args run-mode) #:transparent)
+(struct fix-args
+  (module-args run-mode config-submod)
+  #:transparent
+  #:omit-define-syntaxes
+  #:constructor-name make-fix-args)
+
+(define (fix-args #:module [mod #f]
+                  #:run-mode [run-mode 'wet]
+                  #:config-submod [config-submod #f])
+  (make-fix-args (or mod (module-args 'file '()))
+                 run-mode
+                 (or config-submod (config-submod-args))))
 
 (define (parse-warn-command!)
   (define kind-param (make-parameter 'file))
   (define run-mode-param (make-parameter 'wet))
+  (define config-submod-param (make-parameter #f))
+  (define config-submod-binding-param (make-parameter #f))
   (command-line
    #:program (short-program+command-name)
    #:once-any
@@ -51,9 +66,23 @@
    #:once-each
    [("-D" "--dry-run") "Don't actually write any fixes to files"
                        (run-mode-param 'dry)]
+   #:once-each
+   ["--config-submod" submod
+                      ("Name of the submodule to look for warning configuration in"
+                       "Defaults to 'warning-config")
+                      (config-submod-param (string->symbol submod))]
+   ["--config-submod-binding" submod-binding
+                              ("Name of the binding to require from configuration submodules"
+                               "Defaults to 'config")
+                              (config-submod-binding-param
+                               (string->symbol submod-binding))]
    #:args (arg . args)
-   (fix-args (module-args (kind-param) (cons arg args))
-             (run-mode-param))))
+   (fix-args
+    #:module (module-args (kind-param) (cons arg args))
+    #:run-mode (run-mode-param)
+    #:config-submod (config-submod-args
+                     #:submod-name (config-submod-param)
+                     #:binding-name (config-submod-binding-param)))))
 
 (define (check-kind! k)
   (unless (member k (list 'file 'directory 'collection 'package))
@@ -68,22 +97,25 @@
       (vector "-p" "foo" "bar" "baz"))
     (parameterize ([current-command-line-arguments args])
       (check-equal? (parse-warn-command!)
-                    (fix-args (module-args 'package (list "foo" "bar" "baz"))
-                              'wet))))
+                    (fix-args #:module (module-args 'package
+                                                    (list "foo" "bar" "baz"))
+                              #:run-mode 'wet))))
   (test-case "parse-warn-command! dry mode"
     (define args
       (vector "-Dp" "foo" "bar" "baz"))
     (parameterize ([current-command-line-arguments args])
       (check-equal? (parse-warn-command!)
-                    (fix-args (module-args 'package (list "foo" "bar" "baz"))
-                              'dry))))
+                    (fix-args #:module (module-args 'package
+                                                    (list "foo" "bar" "baz"))
+                              #:run-mode 'dry))))
   (test-case "parse-warn-command! kind arg"
     (define args
       (vector "--arg-kind" "collection" "foo" "bar"))
     (parameterize ([current-command-line-arguments args])
       (check-equal? (parse-warn-command!)
-                    (fix-args (module-args 'collection (list "foo" "bar"))
-                              'wet))))
+                    (fix-args #:module (module-args 'collection
+                                                    (list "foo" "bar"))
+                              #:run-mode 'wet))))
   (test-case "parse-warn-command! bad kind"
     (define args
       (vector "--arg-kind" "nonsense" "foo" "bar"))
@@ -128,12 +160,16 @@
                 (syntax->string (syntax-warning-fix warning/fix))))
 
 (define (fix-warnings! args)
-  (match-define (fix-args mod-args mode) args)
+  (define mod-args (fix-args-module-args args))
+  (define mode (fix-args-run-mode args))
+  (define submod-args (fix-args-config-submod args))
   (define mods (module-args->modules mod-args))
   (write-module-count-message (length mods))
   (define warnings-namespace (make-base-namespace))
   (for ([mod mods])
-    (define warnings (read-syntax-warnings/file mod #:namespace warnings-namespace))
+    (define all-warnings (read-syntax-warnings/file mod #:namespace warnings-namespace))
+    (define config (require-warning-config-submod mod submod-args))
+    (define warnings (filter-unsuppressed-warnings all-warnings config))
     (define warnings/fixes (filter syntax-warning/fix? warnings))
     (define deltas
       (prune-string-deltas (map syntax-warning/fix->string-delta warnings/fixes)))
@@ -153,8 +189,8 @@
 (module+ test
   (test-case "fix-warnings!"
     (define test-args
-      (fix-args (module-args 'package (list "syntax-warn-cli"))
-                'dry))
+      (fix-args #:module (module-args 'package (list "syntax-warn-cli"))
+                #:run-mode 'dry))
     (define (fix-test-warnings!)
       (with-output-to-string (thunk (fix-warnings! test-args))))
     (check-not-exn fix-test-warnings!)

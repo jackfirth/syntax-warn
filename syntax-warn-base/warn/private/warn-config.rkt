@@ -13,10 +13,8 @@
   [warning-config? predicate/c]
   [warning-config-suppressions (-> warning-config? suppressions-config?)]
   [warning-config-merge (->rest warning-config? warning-config?)]
-  [require-warning-config
-   (->* ((or/c module-path? resolved-module-path? module-path-index?))
-        (#:submod-name symbol? #:binding-name symbol?)
-        warning-config?)]))
+  [filter-unsuppressed-warnings
+   (-> (listof syntax-warning?) warning-config? (listof syntax-warning?))]))
 
 (require racket/function
          "warn.rkt")
@@ -116,9 +114,34 @@
                  (warning-config #:suppressions (hash kind1 'unsuppress
                                                       kind2 'unsuppress)))))
 
-(define (require-warning-config modpath
-                                #:submod-name [submod-name 'warning-config]
-                                #:binding-name [binding-name 'config])
-  (dynamic-require (list 'submod modpath submod-name)
-                   binding-name
-                   (thunk empty-warning-config)))
+(define (filter-unsuppressed-warnings warnings config)
+  (define (keep? warning)
+    (equal? (hash-ref (warning-config-suppressions config)
+                      (syntax-warning-kind warning)
+                      'unsuppress)
+            'unsuppress))
+  (filter keep? warnings))
+
+(module+ test
+  (test-case "filter-unsuppressed-warnings"
+    (define-warning-kind kind1)
+    (define-warning-kind kind2)
+    (define warning/no-kind
+      (syntax-warning #:message "Test warning without kind"
+                      #:stx #'here))
+    (define warning/kind1
+      (syntax-warning #:message "Test warning kind1"
+                      #:stx #'there
+                      #:kind kind1))
+    (define warning/kind2
+      (syntax-warning #:message "Test warning kind2"
+                      #:stx #'where
+                      #:kind kind2))
+    (define warnings
+      (list warning/no-kind warning/kind1 warning/kind2))
+    (check-equal? (filter-unsuppressed-warnings warnings (suppress kind1))
+                  (list warning/no-kind warning/kind2))
+    (check-equal? (filter-unsuppressed-warnings warnings (unsuppress kind2))
+                  warnings)
+    (check-equal? (filter-unsuppressed-warnings warnings (suppress kind1 kind2))
+                  (list warning/no-kind))))
