@@ -1,6 +1,8 @@
 #lang racket/base
 
-(provide document-syntax-parameter
+(provide config-tech
+         config-tech-definition
+         document-syntax-parameter
          kind-tech
          kind-tech-definition
          phase-order-tech
@@ -31,9 +33,10 @@
   '(lib "syntax/warn/main.scrbl"))
 
 (define-techs
+  ["phase order" phase-order-tech phase-order-tech-definition]
   ["syntax warning" warn-tech warn-tech-definition]
-  ["warning kind" kind-tech kind-tech-definition]
-  ["phase order" phase-order-tech phase-order-tech-definition])
+  ["warning config" config-tech config-tech-definition]
+  ["warning kind" kind-tech kind-tech-definition])
 
 (define (source-code-link url-str)
   (begin/text "Source code for this library is avaible at "
