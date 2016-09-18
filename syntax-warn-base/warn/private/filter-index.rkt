@@ -1,11 +1,10 @@
-#lang typed/racket/base
+#lang racket/base
 
 (provide filter/index-result)
 
 (module+ test
-  (require typed/rackunit))
+  (require rackunit))
 
-(: filter/index-result (All (a) (-> (-> a Boolean) (Listof a) (Listof (List Integer a)))))
 (define (filter/index-result p vs)
   (for/list ([v vs] [i (in-naturals)] #:when (p v))
     (list i v)))
