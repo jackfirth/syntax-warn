@@ -8,10 +8,9 @@
          raco/command-name
          syntax/modread
          syntax/warn
-         syntax/warn/private/warn-config
          syntax/warn/private/string-lines
          syntax/warn/private/syntax-srcloc
-         syntax/warn/private/syntax-string
+         "private/syntax-string.rkt"
          "private/module.rkt"
          "private/command.rkt"
          "private/config.rkt")

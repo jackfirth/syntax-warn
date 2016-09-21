@@ -5,9 +5,8 @@
          racket/match
          raco/command-name
          syntax/warn
-         syntax/warn/private/warn-config
          syntax/warn/private/syntax-srcloc
-         syntax/warn/private/syntax-string
+         "private/syntax-string.rkt"
          "private/command.rkt"
          "private/config.rkt"
          "private/module.rkt"
