@@ -98,12 +98,16 @@ detected and manipulated by the tools outlined in @secref{syntax-warn-cli}.
  The empty warning config. Represents no changes from default behavior.}
 
 @deftogether[
- ((defproc (suppress [kind warning-kind?] ...) warning-config?)
-  (defproc (unsuppress [kind warning-kind?] ...) warning-config?))]{
+ ((defproc (suppress [kind (or/c warning-kind? symbol?)] ...) warning-config?)
+  (defproc (unsuppress [kind (or/c warning-kind? symbol?)] ...)
+    warning-config?))]{
  Constructs a @config-tech{warning configuration} where warnings of each of the
  given @racket[kind]s is either suppressed or unsuppressed, depending on the
- function called. To suppress some warnings and unsuppress others, see @racket[
- warning-config-merge].}
+ function called. Warnings may be suppressed using an explicit warning kind
+ value or suppressed by a symbol representing the name of the warning kind to
+ suppress. Symbols allow configuration sources to construct warning kind configs
+ without access to the warning kind bindings. To suppress some warnings and
+ unsuppress others, see @racket[warning-config-merge].}
 
 @defproc[(filter-unsuppressed-warnings [warnings (listof syntax-warning?)]
                                        [config warning-config?])

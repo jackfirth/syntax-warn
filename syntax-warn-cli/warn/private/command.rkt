@@ -6,29 +6,42 @@
  (contract-out
   [fix-args
    (->* ()
-        (#:module (or/c module-args? #f)
+        (#:flag-config (or/c config-args? #f)
+         #:module (or/c module-args? #f)
          #:run-mode (or/c run-mode? #f)
-         #:submod-config (or/c submod-config-args? #f))
+         #:submod-config (or/c submod-args? #f))
         fix-args?)]
   [fix-args? predicate/c]
   [fix-args-module (-> fix-args? module-args?)]
-  [fix-args-submod-config (-> fix-args? submod-config-args?)]
+  [fix-args-submod-config (-> fix-args? submod-args?)]
   [fix-args-run-mode (-> fix-args? run-mode?)]
+  [fix-args-config
+   (-> (or/c module-path? resolved-module-path? module-path-index?)
+       fix-args?
+       warning-config?)]
   [parse-fix-command! (-> fix-args?)]
   [parse-warn-command! (-> warn-args?)]
   [warn-args
    (->* ()
-        (#:module (or/c module-args? #f)
-         #:submod-config (or/c submod-config-args? #f))
+        (#:flag-config (or/c config-args? #f)
+         #:module (or/c module-args? #f)
+         #:submod-config (or/c submod-args? #f))
         warn-args?)]
   [warn-args? predicate/c]
+  [warn-args-flag-config (-> warn-args? config-args?)]
   [warn-args-module (-> warn-args? module-args?)]
-  [warn-args-submod-config (-> warn-args? submod-config-args?)]
+  [warn-args-submod-config (-> warn-args? submod-args?)]
+  [warn-args-config
+   (-> (or/c module-path? resolved-module-path? module-path-index?)
+       warn-args?
+       warning-config?)]
   [write-module-count-message (-> exact-nonnegative-integer? void?)]))
 
 (require racket/cmdline
+         racket/function
          racket/match
          raco/command-name
+         syntax/warn
          "config.rkt"
          "module.rkt")
 
@@ -39,28 +52,40 @@
 (define run-mode? (or/c 'wet 'dry))
 
 (struct warn-args
-  (module submod-config)
+  (flag-config module submod-config)
   #:transparent
   #:omit-define-syntaxes
   #:constructor-name make-warn-args)
 
-(define (warn-args #:module [module #f]
+(define (warn-args #:flag-config [flag-config #f]
+                   #:module [module #f]
                    #:submod-config [submod-config #f])
-  (make-warn-args (or module (module-args 'file '()))
-                  (or submod-config (submod-config-args))))
+  (make-warn-args (or flag-config (config-args))
+                  (or module (module-args 'file '()))
+                  (or submod-config (submod-args))))
 
 (struct fix-args
-  (module submod-config run-mode)
+  (flag-config module run-mode submod-config)
   #:transparent
   #:omit-define-syntaxes
   #:constructor-name make-fix-args)
 
-(define (fix-args #:module [mod #f]
-                  #:submod-config [submod-config #f]
-                  #:run-mode [run-mode 'wet])
-  (make-fix-args (or mod (module-args 'file '()))
-                 (or submod-config (submod-config-args))
-                 run-mode))
+(define (fix-args #:flag-config [flag-config #f]
+                  #:module [mod #f]
+                  #:run-mode [run-mode 'wet]
+                  #:submod-config [submod-config #f])
+  (make-fix-args (or flag-config (config-args))
+                 (or mod (module-args 'file '()))
+                 run-mode
+                 (or submod-config (submod-args))))
+
+(define (warn-args-config mod args)
+  (warning-config-merge (submod-args-config mod (warn-args-submod-config args))
+                        (config-args->config (warn-args-flag-config args))))
+
+(define (fix-args-config mod args)
+  (warning-config-merge (submod-args-config mod (fix-args-submod-config args))
+                        (config-args->config (fix-args-flag-config args))))
 
 (define (check-kind! k)
   (unless (member k (list 'file 'directory 'collection 'package))
@@ -73,6 +98,8 @@
   (define kind-param (make-parameter 'file))
   (define config-submod-param (make-parameter #f))
   (define config-submod-binding-param (make-parameter #f))
+  (define suppressions-param (make-parameter '()))
+  (define unsuppressions-param (make-parameter '()))
   (command-line
    #:program (short-program+command-name)
    #:once-any
@@ -109,41 +136,61 @@
                                "Defaults to 'config")
                               (config-submod-binding-param
                                (string->symbol submod-binding))]
+   #:multi
+   ["--suppress" kind-str
+                 ("Name of a warning kind to suppress")
+                 (suppressions-param (cons (string->symbol kind-str)
+                                           (suppressions-param)))]
+   ["--unsuppress" kind-str
+                   ("Name of a warning kind to unsuppress")
+                   (unsuppressions-param (cons (string->symbol kind-str)
+                                               (unsuppressions-param)))]
    #:args (arg . args)
    (warn-args
+    #:flag-config (config-args #:suppress (reverse (suppressions-param))
+                               #:unsuppress (reverse (unsuppressions-param)))
     #:module (module-args (kind-param) (cons arg args))
-    #:submod-config (submod-config-args
-                     #:submod-name (config-submod-param)
-                     #:binding-name (config-submod-binding-param)))))
+    #:submod-config (submod-args #:name (config-submod-param)
+                                 #:binding (config-submod-binding-param)))))
 
 (module+ test
   (test-case "parse-warn-command!"
-    (define (parse/args args)
-      (parameterize ([current-command-line-arguments args])
+    (define (parse/args . args)
+      (parameterize ([current-command-line-arguments (list->vector args)])
         (parse-warn-command!)))
-    (check-equal? (parse/args (vector "-f" "foo" "bar"))
+    (check-equal? (parse/args "-f" "foo" "bar")
                   (warn-args #:module (module-args 'file (list "foo" "bar"))))
-    (check-equal? (parse/args (vector "-d" "foo" "bar"))
+    (check-equal? (parse/args "-d" "foo" "bar")
                   (warn-args #:module (module-args 'directory (list "foo" "bar"))))
-    (check-equal? (parse/args (vector "-c" "foo" "bar"))
+    (check-equal? (parse/args "-c" "foo" "bar")
                   (warn-args #:module (module-args 'collection (list "foo" "bar"))))
-    (check-equal? (parse/args (vector "-p" "foo" "bar"))
+    (check-equal? (parse/args "-p" "foo" "bar")
                   (warn-args #:module (module-args 'package (list "foo" "bar"))))
-    (check-equal? (parse/args (vector "--arg-kind" "file" "foo" "bar"))
+    (check-equal? (parse/args "--arg-kind" "file" "foo" "bar")
                   (warn-args #:module (module-args 'file (list "foo" "bar"))))
-    (check-equal? (parse/args (vector "--config-submod" "foo"
-                                      "--config-submod-binding" "bar"
-                                      "some/file"))
+    (check-equal? (parse/args "--config-submod" "foo"
+                              "--config-submod-binding" "bar"
+                              "some/file")
                   (warn-args
                    #:module (module-args 'file (list "some/file"))
-                   #:submod-config (submod-config-args #:submod-name 'foo
-                                                       #:binding-name 'bar)))))
+                   #:submod-config (submod-args #:name 'foo #:binding 'bar)))
+    (check-equal? (parse/args "--suppress" "k1"
+                              "--suppress" "k2"
+                              "--unsuppress" "k3"
+                              "--unsuppress" "k4"
+                              "some/file")
+                  (warn-args
+                   #:module (module-args 'file (list "some/file"))
+                   #:flag-config (config-args #:suppress '(k1 k2)
+                                              #:unsuppress '(k3 k4))))))
 
 (define (parse-fix-command!)
   (define kind-param (make-parameter 'file))
   (define run-mode-param (make-parameter 'wet))
   (define config-submod-param (make-parameter #f))
   (define config-submod-binding-param (make-parameter #f))
+  (define suppressions-param (make-parameter '()))
+  (define unsuppressions-param (make-parameter '()))
   (command-line
    #:program (short-program+command-name)
    #:once-any
@@ -183,44 +230,55 @@
                                "Defaults to 'config")
                               (config-submod-binding-param
                                (string->symbol submod-binding))]
+   #:multi
+   ["--suppress" kind-str
+                 ("Name of a warning kind to suppress")
+                 (suppressions-param (cons (string->symbol kind-str)
+                                           (suppressions-param)))]
+   ["--unsuppress" kind-str
+                   ("Name of a warning kind to unsuppress")
+                   (unsuppressions-param (cons (string->symbol kind-str)
+                                               (unsuppressions-param)))]
    #:args (arg . args)
    (fix-args
+    #:flag-config (config-args #:suppress (reverse (suppressions-param))
+                               #:unsuppress (reverse (unsuppressions-param)))
     #:module (module-args (kind-param) (cons arg args))
     #:run-mode (run-mode-param)
-    #:submod-config (submod-config-args
-                     #:submod-name (config-submod-param)
-                     #:binding-name (config-submod-binding-param)))))
+    #:submod-config (submod-args #:name (config-submod-param)
+                                 #:binding (config-submod-binding-param)))))
 
 (module+ test
-  (test-case "parse-fix-command! package args"
-    (define args
-      (vector "-p" "foo" "bar" "baz"))
-    (parameterize ([current-command-line-arguments args])
-      (check-equal? (parse-fix-command!)
-                    (fix-args #:module (module-args 'package
-                                                    (list "foo" "bar" "baz"))
-                              #:run-mode 'wet))))
-  (test-case "parse-fix-command! dry mode"
-    (define args
-      (vector "-Dp" "foo" "bar" "baz"))
-    (parameterize ([current-command-line-arguments args])
-      (check-equal? (parse-fix-command!)
-                    (fix-args #:module (module-args 'package
-                                                    (list "foo" "bar" "baz"))
-                              #:run-mode 'dry))))
-  (test-case "parse-fix-command! kind arg"
-    (define args
-      (vector "--arg-kind" "collection" "foo" "bar"))
-    (parameterize ([current-command-line-arguments args])
-      (check-equal? (parse-fix-command!)
-                    (fix-args #:module (module-args 'collection
-                                                    (list "foo" "bar"))
-                              #:run-mode 'wet))))
-  (test-case "parse-fix-command! bad kind"
-    (define args
-      (vector "--arg-kind" "nonsense" "foo" "bar"))
-    (parameterize ([current-command-line-arguments args])
-      (check-exn exn:fail:contract? parse-fix-command!))))
+  (define (parse/args . args)
+    (parameterize ([current-command-line-arguments (list->vector args)])
+      (parse-fix-command!)))
+  (test-equal? "parse-fix-command! package args"
+               (parse/args "-p" "foo" "bar" "baz")
+               (fix-args #:module (module-args 'package
+                                               (list "foo" "bar" "baz"))
+                         #:run-mode 'wet))
+  (test-equal? "parse-fix-command! dry mode"
+               (parse/args "-Dp" "foo" "bar" "baz")
+               (fix-args #:module (module-args 'package
+                                               (list "foo" "bar" "baz"))
+                         #:run-mode 'dry))
+  (test-equal? "parse-fix-command! kind arg"
+               (parse/args "--arg-kind" "collection" "foo" "bar")
+               (fix-args #:module (module-args 'collection
+                                               (list "foo" "bar"))
+                         #:run-mode 'wet))
+  (test-exn "parse-fix-command! bad kind"
+            exn:fail:contract?
+            (thunk (parse/args "--arg-kind" "nonsense" "foo" "bar")))
+  (test-equal? "parse-fix-command! suppression flags"
+               (parse/args "--suppress" "k1"
+                           "--suppress" "k2"
+                           "--unsuppress" "k3"
+                           "--unsuppress" "k4"
+                           "some/file")
+               (fix-args #:module (module-args 'file (list "some/file"))
+                         #:flag-config (config-args #:suppress '(k1 k2)
+                                                    #:unsuppress '(k3 k4)))))
 
 (define (write-module-count-message mod-count)
   (match mod-count

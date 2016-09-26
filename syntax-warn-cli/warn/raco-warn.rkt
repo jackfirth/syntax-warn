@@ -87,7 +87,7 @@
   (printf (format-warning warning))
   (flush-output))
 
-(define (warn-modules resolved-module-paths config-submod-args)
+(define (warn-modules resolved-module-paths warn-args)
   (define any-warned? (box #f))
   (define warnings-namespace (make-base-namespace))
   (for ([modpath resolved-module-paths])
@@ -96,7 +96,7 @@
     (define all-warnings
       (read-syntax-warnings/file modpath #:namespace warnings-namespace))
     (define config
-      (require-warning-config-submod modpath config-submod-args))
+      (warn-args-config modpath warn-args))
     (define warnings (filter-unsuppressed-warnings all-warnings config))
     (when (not (empty? warnings))
       (define warning-strs (map format-warning warnings))
@@ -106,11 +106,9 @@
   (unbox any-warned?))
 
 (define (run-warn-command! warn-args)
-  (define module-args (warn-args-module warn-args))
-  (define config-args (warn-args-submod-config warn-args))
-  (define modules (module-args->modules module-args))
+  (define modules (module-args->modules (warn-args-module warn-args)))
   (write-module-count-message (length modules))
-  (if (warn-modules modules config-args) 1 0))
+  (if (warn-modules modules warn-args) 1 0))
 
 (module+ test
   (test-case "run-warn-command!"

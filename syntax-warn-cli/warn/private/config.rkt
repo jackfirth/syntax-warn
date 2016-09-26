@@ -4,15 +4,19 @@
 
 (provide
  (contract-out
-  [submod-config-args
-   (->* () (#:submod-name (or/c symbol? #f) #:binding-name (or/c symbol? #f))
-        submod-config-args?)]
-  [submod-config-args? predicate/c]
-  [submod-config-args-submod (-> submod-config-args? symbol?)]
-  [submod-config-args-binding (-> submod-config-args? symbol?)]
-  [require-warning-config-submod
+  [config-args
+   (->* () (#:suppress (listof symbol?) #:unsuppress (listof symbol?))
+        config-args?)]
+  [config-args? predicate/c]
+  [config-args->config (-> config-args? warning-config?)]
+  [submod-args
+   (->* () (#:name (or/c symbol? #f) #:binding (or/c symbol? #f)) submod-args?)]
+  [submod-args? predicate/c]
+  [submod-args-name (-> submod-args? symbol?)]
+  [submod-args-binding (-> submod-args? symbol?)]
+  [submod-args-config
    (-> (or/c module-path? resolved-module-path? module-path-index?)
-       submod-config-args?
+       submod-args?
        warning-config?)]))
 
 (require racket/function
@@ -22,29 +26,40 @@
   (require rackunit))
 
 
-(struct submod-config-args
-  (submod binding)
+(struct config-args
+  (suppressed-names unsuppressed-names)
   #:transparent
   #:omit-define-syntaxes
-  #:constructor-name make-submod-config-args)
+  #:constructor-name make-config-args)
 
-(define (submod-config-args #:submod-name [submod #f]
-                            #:binding-name [binding #f])
-  (make-submod-config-args (or submod 'warning-config)
-                           (or binding 'config)))
+(define (config-args #:suppress [suppressed '()]
+                     #:unsuppress [unsuppressed '()])
+  (make-config-args suppressed unsuppressed))
+
+(struct submod-args
+  (binding name)
+  #:transparent
+  #:omit-define-syntaxes
+  #:constructor-name make-submod-args)
+
+(define (submod-args #:binding [binding #f] #:name [name #f])
+  (make-submod-args (or binding 'config) (or name 'warning-config)))
 
 (module+ test
   (test-case "config-submod-args"
-    (check-equal? (submod-config-args)
-                  (make-submod-config-args 'warning-config 'config))
-    (check-equal? (submod-config-args #:submod-name 'foo
-                                      #:binding-name 'bar)
-                  (make-submod-config-args 'foo 'bar))))
+    (check-equal? (submod-args) (make-submod-args 'config 'warning-config))
+    (check-equal? (submod-args #:binding 'foo #:name 'bar)
+                  (make-submod-args 'foo 'bar))))
 
-(define (require-warning-config-submod modpath config-args)
-  (define submod-name (submod-config-args-submod config-args))
-  (define binding-name (submod-config-args-binding config-args))
+(define (submod-args-config modpath config-args)
+  (define submod-name (submod-args-name config-args))
+  (define submod-binding (submod-args-binding config-args))
   (with-handlers ([exn:fail? (const empty-warning-config)])
     (dynamic-require (list 'submod modpath submod-name)
-                     binding-name
+                     submod-binding
                      (thunk empty-warning-config))))
+
+(define (config-args->config args)
+  (define suppressed (apply suppress (config-args-suppressed-names args)))
+  (define unsuppressed (apply unsuppress (config-args-unsuppressed-names args)))
+  (warning-config-merge suppressed unsuppressed))
