@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang racket/base
 
 (provide string-append-lines
          string-indent-lines
@@ -9,10 +9,9 @@
          racket/string)
 
 (module+ test
-  (require typed/rackunit))
+  (require rackunit))
 
 
-(: string-append-lines (->* () #:rest String String))
 (define (string-append-lines . strings)
   (apply string-append
          (add-between strings "\n")))
@@ -25,9 +24,7 @@
                 "foo\n\nbar")
   (check-equal? (string-append-lines) ""))
 
-(: string-indent-lines (-> String Nonnegative-Integer String))
 (define (string-indent-lines str n)
-  (: indent-line (-> String String))
   (define (indent-line line)
     (string-append (make-string n #\space) line))
   (lines->string (map indent-line (string->lines str))))
@@ -35,7 +32,6 @@
 (module+ test
   (check-equal? (string-indent-lines "foo\nbar" 2) "  foo\n  bar"))
 
-(: string->lines (-> String (Listof String)))
 (define (string->lines str)
   (if (equal? str "")
       (list "")
@@ -47,7 +43,6 @@
   (check-equal? (string->lines "") (list ""))
   (check-equal? (string->lines "\n") (list "" "")))
 
-(: lines->string (-> (Listof String) String))
 (define (lines->string lines)
   (string-join lines "\n"))
 
