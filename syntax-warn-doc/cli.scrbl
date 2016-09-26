@@ -53,14 +53,20 @@ the following flags:
    collection}.}
  @item{@Flag{p} or @DFlag{package} --- Shorthand for @exec{--arg-kind
    package}.}
- @item{@Flag{config-submod} --- Sets the name of the submodule to
+ @item{@DFlag{config-submod} --- Sets the name of the submodule to
   look for warning configuration in. Required prior to loading of
   the surrounding module to check. Defaults to @racket['warning-config].}
- @item{@Flag{config-submod-binding} --- Sets the name of the value
+ @item{@DFlag{config-submod-binding} --- Sets the name of the value
   to look for in the warning configuration submodule. Defaults to
   @racket[config]. The warning configuration submodule should
   @racket[provide] a @racket[warning-configuration?] value under this
-  name.}]
+  name.}
+ @item{@DFlag{suppress} --- Repeated, sets a list of warning kinds to
+  suppress. Example usage: @exec{raco warn --suppress foo --suppress bar -p
+   some-package}.}
+ @item{@DFlag{unsuppress} --- Like @exec{--suppress} but for unsuppressing
+  warnings. Use this to turn back on warnings that module configuration turned
+  off.}]
 
 @section{@exec{raco fix}: Fixing Syntax Warnings}
 
@@ -89,4 +95,5 @@ the following flags:
 
 In addition, the @exec{raco fix} command looks for @config-tech{warning
  configuration} in the same way as @exec{raco warn} with the same flags
-to control this behavior.
+to control this behavior. Warnings can also be suppressed and unsuppressed in
+the same manner as @exec{raco warn}.

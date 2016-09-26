@@ -5,8 +5,8 @@
 (provide
  (contract-out
   [empty-warning-config warning-config?]
-  [suppress (->rest warning-kind? warning-config?)]
-  [unsuppress (->rest warning-kind? warning-config?)]
+  [suppress (->rest (or/c warning-kind? symbol?) warning-config?)]
+  [unsuppress (->rest (or/c warning-kind? symbol?) warning-config?)]
   [warning-config? predicate/c]
   [warning-config-merge (->rest warning-config? warning-config?)]
   [filter-unsuppressed-warnings
@@ -68,32 +68,32 @@
 (module+ test
   (require (submod ".."))
   (test-case "syntax-warning-config-merge"
-    (define-warning-kind kind1)
-    (define-warning-kind kind2)
-    (define-warning-kind kind3)
-    (define-warning-kind kind4)
-    (define-warning-kind kind5)
     (define config1
-      (warning-config #:suppressions (hash kind1 'suppress
-                                           kind3 'suppress
-                                           kind4 'unsuppress)))
+      (warning-config #:suppressions (hash 'kind1 'suppress
+                                           'kind3 'suppress
+                                           'kind4 'unsuppress)))
     (define config2
-      (warning-config #:suppressions (hash kind2 'unsuppress
-                                           kind3 'unsuppress
-                                           kind4 'suppress)))
+      (warning-config #:suppressions (hash 'kind2 'unsuppress
+                                           'kind3 'unsuppress
+                                           'kind4 'suppress)))
     (define config3
-      (warning-config #:suppressions (hash kind5 'suppress)))
+      (warning-config #:suppressions (hash 'kind5 'suppress)))
     (check-equal? (warning-config-merge config1 config2 config3)
-                  (warning-config #:suppressions (hash kind1 'suppress
-                                                       kind2 'unsuppress
-                                                       kind3 'unsuppress
-                                                       kind4 'suppress
-                                                       kind5 'suppress)))))
+                  (warning-config #:suppressions (hash 'kind1 'suppress
+                                                       'kind2 'unsuppress
+                                                       'kind3 'unsuppress
+                                                       'kind4 'suppress
+                                                       'kind5 'suppress)))))
 
-(define ((suppressions-syntax-warnings-config setting) . kinds)
+(define ((suppressions-syntax-warnings-config setting) . kinds-or-names)
+  (define names
+    (for/list ([kind-or-name (in-list kinds-or-names)])
+      (if (warning-kind? kind-or-name)
+          (warning-kind-name kind-or-name)
+          kind-or-name)))
   (define suppressions-config
-    (for/hash ([kind (in-list kinds)])
-      (values kind setting)))
+    (for/hash ([name (in-list names)])
+      (values name setting)))
   (warning-config #:suppressions suppressions-config))
 
 (define suppress (suppressions-syntax-warnings-config 'suppress))
@@ -103,19 +103,21 @@
   (test-case "suppression sugar procedures"
     (define-warning-kind kind1)
     (define-warning-kind kind2)
-    (test-equal? "suppress" (suppress kind1 kind2)
-                 (warning-config #:suppressions (hash kind1 'suppress
-                                                      kind2 'suppress)))
-    (test-equal? "unsuppress" (unsuppress kind1 kind2)
-                 (warning-config #:suppressions (hash kind1 'unsuppress
-                                                      kind2 'unsuppress)))))
+    (test-equal? "suppress" (suppress kind1 'kind2)
+                 (warning-config #:suppressions (hash 'kind1 'suppress
+                                                      'kind2 'suppress)))
+    (test-equal? "unsuppress" (unsuppress 'kind1 kind2)
+                 (warning-config #:suppressions (hash 'kind1 'unsuppress
+                                                      'kind2 'unsuppress)))))
 
 (define (filter-unsuppressed-warnings warnings config)
   (define (keep? warning)
-    (equal? (hash-ref (warning-config-suppressions config)
-                      (syntax-warning-kind warning)
-                      'unsuppress)
-            'unsuppress))
+    (define maybe-kind (syntax-warning-kind warning))
+    (or (not maybe-kind)
+        (equal? (hash-ref (warning-config-suppressions config)
+                          (warning-kind-name maybe-kind)
+                          'unsuppress)
+                'unsuppress)))
   (filter keep? warnings))
 
 (module+ test
