@@ -3,7 +3,8 @@
 (define version "0.1")
 (define collection "syntax")
 (define deps
-  '("rackunit-lib"
-    "typed-racket-lib"
-    ("base" #:version "6.4")))
-(define build-deps '("typed-racket-more"))
+  '(("base" #:version "6.4")))
+(define build-deps
+  '("rackunit-lib"))
+(define compile-omit-paths
+  '("warn/private"))

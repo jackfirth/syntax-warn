@@ -1,16 +1,14 @@
-#lang typed/racket/base
+#lang racket/base
 
 (provide string-pad-right)
 
 (require racket/string)
 
 (module+ test
-  (require typed/rackunit))
+  (require rackunit))
 
 
-(: string-pad-right (-> String Char Nonnegative-Integer String))
 (define (string-pad-right str pad-char min-length)
-  (: num-below-minimum Nonnegative-Integer)
   (define num-below-minimum
     (max (- min-length (string-length str)) 0))
   (string-append str (make-string num-below-minimum pad-char)))
