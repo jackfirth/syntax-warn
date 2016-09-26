@@ -16,7 +16,7 @@
        warning-config?)]))
 
 (require racket/function
-         syntax/warn/private/warn-config)
+         syntax/warn)
 
 (module+ test
   (require rackunit))

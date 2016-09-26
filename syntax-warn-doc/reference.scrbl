@@ -78,40 +78,32 @@ detected and manipulated by the tools outlined in @secref{syntax-warn-cli}.
  and uses @racket[filepath] as the source name.}
 
 @defproc[(warning-config? [v any/c]) boolean?]{
- Predicate that recognizes @config-tech{warning configurations}.}
-
-@defproc[(warning-config [#:suppressions suppressions suppressions-config? (hash)])
-         warning-config?]{
- Constructs a @config-tech-definition{warning configuration}, a value used to
- control the behavior of tools that analyze syntax warnings. Warning configs
- may @italic{suppress} or @italic{unsuppress} various @kind-tech{warning kinds},
- as defined by @racket[suppressions].}
-
-@defthing[suppressions-config? flat-contract?]{
- Contract recognizing immutable hash tables whose keys are @kind-tech{warning kinds}
- and whose values are one of @racket['suppress] or @racket['unsuppress].}
-
-@defproc[(warning-config-suppressions [config warning-config?])
-         suppressions-config?]{
- Returns the suppressions configuration in @racket[config].}
+ Predicate that recognizes @config-tech-definition{warning configurations},
+ values used to control the behavior of tools that analyze syntax warnings.
+ Configurations from different souces may be merged with
+ @racket[warning-config-merge]. Currently, warning configurations contain
+ information about what kinds of warnings should be suppressed or unsuppressed
+ (in the case of warnings that aren't on by default). See @racket[suppress]
+ and @racket[unsuppress] for details on how to construct these configurations.}
 
 @defproc[(warning-config-merge [config warning-config?] ...) warning-config?]{
  Merges the given @racket[config] values into a single @config-tech{warning
-  configuration}. The suppression config hashes are merged together, in the
- case of multiple @racket[config]s specifying suppression behavior for the
- same @kind-tech{warning kind}, values in the rightmost @racket[config]s take
- precedence.}
+  configuration}. In the case of more than one @racket[config] attempting to
+ suppress or unsuppress a warning kind, the rightmost configuration takes
+ precedence. Merging any config with the @racket[empty-warning-config] is
+ equivalent to leaving the config unchanged. If no configurations are provided,
+ returns @racket[empty-warning-config].}
 
 @defthing[empty-warning-config warning-config?]{
- The empty warning config. Represents no changes from default behavior.
- Equivalent to @racket[(warning-config)].}
+ The empty warning config. Represents no changes from default behavior.}
 
 @deftogether[
  ((defproc (suppress [kind warning-kind?] ...) warning-config?)
   (defproc (unsuppress [kind warning-kind?] ...) warning-config?))]{
  Constructs a @config-tech{warning configuration} where warnings of each of the
  given @racket[kind]s is either suppressed or unsuppressed, depending on the
- function called.}
+ function called. To suppress some warnings and unsuppress others, see @racket[
+ warning-config-merge].}
 
 @defproc[(filter-unsuppressed-warnings [warnings (listof syntax-warning?)]
                                        [config warning-config?])

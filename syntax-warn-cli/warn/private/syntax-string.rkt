@@ -20,7 +20,7 @@
          racket/port
          racket/sequence
          racket/string
-         "syntax-srcloc.rkt")
+         syntax/warn/private/syntax-srcloc)
 
 (module+ test
   (require rackunit))
