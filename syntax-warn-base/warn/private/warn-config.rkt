@@ -5,13 +5,9 @@
 (provide
  (contract-out
   [empty-warning-config warning-config?]
-  [suppressions-config? flat-contract?]
   [suppress (->rest warning-kind? warning-config?)]
   [unsuppress (->rest warning-kind? warning-config?)]
-  [warning-config (->* () (#:suppressions suppressions-config?)
-                       warning-config?)]
   [warning-config? predicate/c]
-  [warning-config-suppressions (-> warning-config? suppressions-config?)]
   [warning-config-merge (->rest warning-config? warning-config?)]
   [filter-unsuppressed-warnings
    (-> (listof syntax-warning?) warning-config? (listof syntax-warning?))]))
