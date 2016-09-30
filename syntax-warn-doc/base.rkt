@@ -1,6 +1,9 @@
 #lang racket/base
 
-(provide config-tech
+(provide (for-label (all-from-out racket/base
+                                  racket/contract
+                                  syntax/warn))
+         config-tech
          config-tech-definition
          document-syntax-parameter
          kind-tech
@@ -12,7 +15,10 @@
          warn-tech
          warn-tech-definition)
 
-(require scribble/base
+(require (for-label racket/base
+                    racket/contract
+                    syntax/warn)
+         scribble/base
          scribble/example
          scribble/manual
          scribble/text
