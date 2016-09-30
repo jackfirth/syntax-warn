@@ -8,6 +8,7 @@
          document-syntax-parameter
          kind-tech
          kind-tech-definition
+         package-name
          phase-order-tech
          phase-order-tech-definition
          source-code-link
@@ -32,11 +33,8 @@
       (define (def-id . pre-flow)
         (apply deftech #:key key pre-flow))
       (define (use-id . pre-flow)
-        (apply tech #:key key #:doc warn-doc pre-flow)))
+        (apply tech #:key key pre-flow)))
     ...))
-
-(define warn-doc
-  '(lib "syntax/warn/main.scrbl"))
 
 (define-techs
   ["phase order" phase-order-tech phase-order-tech-definition]
@@ -47,6 +45,9 @@
 (define (source-code-link url-str)
   (begin/text "Source code for this library is avaible at "
               (url url-str)))
+
+(define-syntax-rule (package-name pre-flow ...)
+  (code #:context #f pre-flow ...))
 
 (define warn-requires
   '(syntax/warn))
