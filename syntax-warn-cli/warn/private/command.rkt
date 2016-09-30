@@ -110,22 +110,22 @@
                  (define kind-sym (string->symbol kind))
                  (check-kind! kind-sym)
                  (kind-param kind-sym)]
-   [("-f" "--file-args") ("Interpret the arguments as files"
-                          "Files are required as modules and checked"
-                          "Equivalent to \"--arg-kind file\", default behavior")
-                         (kind-param 'file)]
-   [("-d" "--directory-args") ("Interpret the arguments as directories"
-                               "Modules in directories are recursively checked"
-                               "Equivalent to \"--arg-kind directory\"")
-                              (kind-param 'directory)]
-   [("-c" "--collection-args") ("Interpet the arguments as collections"
-                                "Modules in collections are recursively checked"
-                                "Equivalent to \"--arg-kind collection\"")
-                               (kind-param 'collection)]
-   [("-p" "--package-args") ("Interpret the arguments as packages"
-                             "Modules in packages are recursively checked"
-                             "Equivalent to \"--arg-kind package\"")
-                            (kind-param 'package)]
+   [("-f" "--files") ("Interpret the arguments as files"
+                      "Files are required as modules and checked"
+                      "Equivalent to \"--arg-kind file\", default behavior")
+                     (kind-param 'file)]
+   [("-d" "--directories") ("Interpret the arguments as directories"
+                            "Modules in directories are recursively checked"
+                            "Equivalent to \"--arg-kind directory\"")
+                           (kind-param 'directory)]
+   [("-c" "--collections") ("Interpet the arguments as collections"
+                            "Modules in collections are recursively checked"
+                            "Equivalent to \"--arg-kind collection\"")
+                           (kind-param 'collection)]
+   [("-p" "--packages") ("Interpret the arguments as packages"
+                         "Modules in packages are recursively checked"
+                         "Equivalent to \"--arg-kind package\"")
+                        (kind-param 'package)]
    #:once-each
    ["--config-submod" submod
                       ("Name of the submodule to look for warning configuration in"
@@ -201,22 +201,22 @@
                  (define kind-sym (string->symbol kind))
                  (check-kind! kind-sym)
                  (kind-param kind-sym)]
-   [("-f" "--file-args") ("Interpret the arguments as files"
-                          "Files are required as modules and checked"
-                          "Equivalent to \"--arg-kind file\", default behavior")
-                         (kind-param 'file)]
-   [("-d" "--directory-args") ("Interpret the arguments as directories"
-                               "Modules in directories are recursively checked"
-                               "Equivalent to \"--arg-kind directory\"")
-                              (kind-param 'directory)]
-   [("-c" "--collection-args") ("Interpet the arguments as collections"
-                                "Modules in collections are recursively checked"
-                                "Equivalent to \"--arg-kind collection\"")
-                               (kind-param 'collection)]
-   [("-p" "--package-args") ("Interpret the arguments as packages"
-                             "Modules in packages are recursively checked"
-                             "Equivalent to \"--arg-kind package\"")
-                            (kind-param 'package)]
+   [("-f" "--files") ("Interpret the arguments as files"
+                      "Files are required as modules and checked"
+                      "Equivalent to \"--arg-kind file\", default behavior")
+                     (kind-param 'file)]
+   [("-d" "--directories") ("Interpret the arguments as directories"
+                            "Modules in directories are recursively checked"
+                            "Equivalent to \"--arg-kind directory\"")
+                           (kind-param 'directory)]
+   [("-c" "--collections") ("Interpet the arguments as collections"
+                            "Modules in collections are recursively checked"
+                            "Equivalent to \"--arg-kind collection\"")
+                           (kind-param 'collection)]
+   [("-p" "--packages") ("Interpret the arguments as packages"
+                         "Modules in packages are recursively checked"
+                         "Equivalent to \"--arg-kind package\"")
+                        (kind-param 'package)]
    #:once-each
    [("-D" "--dry-run") "Don't actually write any fixes to files"
                        (run-mode-param 'dry)]

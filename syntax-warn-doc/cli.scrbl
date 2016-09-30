@@ -46,12 +46,12 @@ the following flags:
               collection, whose modules are checked recursively.}
            @item{package: Each argument is interpreted as a
               package, whose modules are checked recursively.}]}
- @item{@Flag{f} or @DFlag{file} --- Shorthand for @exec{--arg-kind file}.}
- @item{@Flag{d} or @DFlag{directory} --- Shorthand for @exec{--arg-kind
+ @item{@Flag{f} or @DFlag{files} --- Shorthand for @exec{--arg-kind file}.}
+ @item{@Flag{d} or @DFlag{directories} --- Shorthand for @exec{--arg-kind
    directory}.}
- @item{@Flag{c} or @DFlag{collection} --- Shorthand for @exec{--arg-kind
+ @item{@Flag{c} or @DFlag{collections} --- Shorthand for @exec{--arg-kind
    collection}.}
- @item{@Flag{p} or @DFlag{package} --- Shorthand for @exec{--arg-kind
+ @item{@Flag{p} or @DFlag{packages} --- Shorthand for @exec{--arg-kind
    package}.}
  @item{@DFlag{config-submod} --- Sets the name of the submodule to
   look for warning configuration in. Required prior to loading of
