@@ -61,7 +61,7 @@
                    #:module [module #f]
                    #:submod-config [submod-config #f])
   (make-warn-args (or flag-config (config-args))
-                  (or module (module-args 'file '()))
+                  (or module (module-args 'collection '()))
                   (or submod-config (submod-args))))
 
 (struct fix-args
@@ -71,11 +71,11 @@
   #:constructor-name make-fix-args)
 
 (define (fix-args #:flag-config [flag-config #f]
-                  #:module [mod #f]
+                  #:module [module #f]
                   #:run-mode [run-mode 'wet]
                   #:submod-config [submod-config #f])
   (make-fix-args (or flag-config (config-args))
-                 (or mod (module-args 'file '()))
+                 (or module (module-args 'collection '()))
                  run-mode
                  (or submod-config (submod-args))))
 
@@ -95,7 +95,7 @@
      "--arg-kind" k)))
 
 (define (parse-warn-command!)
-  (define kind-param (make-parameter 'file))
+  (define kind-param (make-parameter 'collection))
   (define config-submod-param (make-parameter #f))
   (define config-submod-binding-param (make-parameter #f))
   (define suppressions-param (make-parameter '()))
@@ -172,7 +172,7 @@
                               "--config-submod-binding" "bar"
                               "some/file")
                   (warn-args
-                   #:module (module-args 'file (list "some/file"))
+                   #:module (module-args 'collection (list "some/file"))
                    #:submod-config (submod-args #:name 'foo #:binding 'bar)))
     (check-equal? (parse/args "--suppress" "k1"
                               "--suppress" "k2"
@@ -180,12 +180,12 @@
                               "--unsuppress" "k4"
                               "some/file")
                   (warn-args
-                   #:module (module-args 'file (list "some/file"))
+                   #:module (module-args 'collection (list "some/file"))
                    #:flag-config (config-args #:suppress '(k1 k2)
                                               #:unsuppress '(k3 k4))))))
 
 (define (parse-fix-command!)
-  (define kind-param (make-parameter 'file))
+  (define kind-param (make-parameter 'collection))
   (define run-mode-param (make-parameter 'wet))
   (define config-submod-param (make-parameter #f))
   (define config-submod-binding-param (make-parameter #f))
@@ -276,7 +276,7 @@
                            "--unsuppress" "k3"
                            "--unsuppress" "k4"
                            "some/file")
-               (fix-args #:module (module-args 'file (list "some/file"))
+               (fix-args #:module (module-args 'collection (list "some/file"))
                          #:flag-config (config-args #:suppress '(k1 k2)
                                                     #:unsuppress '(k3 k4)))))
 
