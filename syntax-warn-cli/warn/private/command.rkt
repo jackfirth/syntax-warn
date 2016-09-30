@@ -218,8 +218,8 @@
                          "Equivalent to \"--arg-kind package\"")
                         (kind-param 'package)]
    #:once-each
-   [("-D" "--dry-run") "Don't actually write any fixes to files"
-                       (run-mode-param 'dry)]
+   [("-D" "--dry") "Don't actually write any fixes to files"
+                   (run-mode-param 'dry)]
    #:once-each
    ["--config-submod" submod
                       ("Name of the submodule to look for warning configuration in"
