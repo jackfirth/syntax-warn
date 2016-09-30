@@ -28,7 +28,7 @@ provided by that module's @racket['warning-config] submodule. If this
 module or the expected binding isn't present, @racket[empty-warning-config]
 is used. This allows for per-module suppression of particular kinds
 of warnings, see the documentation of @racket[warning-config] for
-details.
+details. Warnings may also be suppressed via command line flags.
 
 The @exec{raco warn} command accepts any number of arguments along with
 the following flags:
@@ -89,11 +89,11 @@ the following flags:
   This flag accepts the same values and has the same default as it does
   for @exec{raco warn}. Additionally, the same shorthand flags for the
   various values are accepted.}
- @item{@Flag{D} or @DFlag{dry-run} --- Sets the run mode to @italic{
-   dry run}. In a dry run, @exec{raco fix} performs no file writes and
-  merely outputs what it would fix in which modules.}]
+ @item{@Flag{D} or @DFlag{dry} --- Sets the run mode to @italic{dry run}. In a
+  dry run, @exec{raco fix} performs no file writes and merely outputs what it
+  would fix in which modules.}]
 
 In addition, the @exec{raco fix} command looks for @config-tech{warning
  configuration} in the same way as @exec{raco warn} with the same flags
-to control this behavior. Warnings can also be suppressed and unsuppressed in
-the same manner as @exec{raco warn}.
+to control this behavior. Warnings can also be suppressed and unsuppressed with
+direct flags in the same manner as @exec{raco warn}.
