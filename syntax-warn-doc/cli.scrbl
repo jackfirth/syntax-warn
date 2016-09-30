@@ -35,7 +35,7 @@ the following flags:
 
 @itemize[
  @item{@DFlag{arg-kind} --- Sets how to interpret the given arguments.
-  Defaults to "file". Valid interpretation modes are:
+  Defaults to "collection". Valid interpretation modes are:
   @itemize[@item{file: Each argument is interpreted as a relative
               or absolute file path to a module.}
            @item{directory: Each argument is interpreted as a
