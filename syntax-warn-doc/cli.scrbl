@@ -36,16 +36,16 @@ the following flags:
 @itemize[
  @item{@DFlag{arg-kind} --- Sets how to interpret the given arguments.
   Defaults to "collection". Valid interpretation modes are:
-  @itemize[@item{file: Each argument is interpreted as a relative
-              or absolute file path to a module.}
-           @item{directory: Each argument is interpreted as a
-              relative or absolute directory path, which is
-              recursively scanned for modules. All files in
-              the given directories are assumed to be modules.}
-           @item{collection: Each argument is interpreted as a
+  @itemize[@item{@racket{file} --- Each argument is interpreted as a relative or
+              absolute file path to a module.}
+           @item{@racket{directory} --- Each argument is interpreted as a
+              relative or absolute directory path, which is recursively scanned
+              for modules. All files in the given directories are assumed to be
+              modules.}
+           @item{@racket{collection} --- Each argument is interpreted as a
               collection, whose modules are checked recursively.}
-           @item{package: Each argument is interpreted as a
-              package, whose modules are checked recursively.}]}
+           @item{@racket{package} --- Each argument is interpreted as a package,
+              whose modules are checked recursively.}]}
  @item{@Flag{f} or @DFlag{files} --- Shorthand for @exec{--arg-kind file}.}
  @item{@Flag{d} or @DFlag{directories} --- Shorthand for @exec{--arg-kind
    directory}.}
@@ -89,9 +89,15 @@ the following flags:
   This flag accepts the same values and has the same default as it does
   for @exec{raco warn}. Additionally, the same shorthand flags for the
   various values are accepted.}
- @item{@Flag{D} or @DFlag{dry} --- Sets the run mode to @italic{dry run}. In a
-  dry run, @exec{raco fix} performs no file writes and merely outputs what it
-  would fix in which modules.}]
+ @item{@DFlag{run-mode} --- Sets how to handle fixable warnings. Valid options
+  are:
+  @itemize[@item{@racket{wet} --- Default behavior. Write any found fixes to the
+              module files indicated by source locations.}
+           @item{@racket{dry} --- Operate as a @italic{dry run}. In a dry run,
+              @exec{raco fix} performs no file writes and merely outputs what it
+  would fix in which modules.}]}
+ @item{@Flag{D} or @DFlag{dry} --- Shorthand for @exec{--run-mode dry}.}
+ @item{@Flag{E} or @DFlag{wet} --- Shorthand for @exec{--run-mode wet}.}]
 
 In addition, the @exec{raco fix} command looks for @config-tech{warning
  configuration} in the same way as @exec{raco warn} with the same flags

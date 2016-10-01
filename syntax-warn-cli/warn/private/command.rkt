@@ -21,6 +21,7 @@
        warning-config?)]
   [parse-fix-command! (-> fix-args?)]
   [parse-warn-command! (-> warn-args?)]
+  [run-mode? flat-contract?]
   [warn-args
    (->* ()
         (#:flag-config (or/c config-args? #f)
@@ -72,12 +73,20 @@
 
 (define (fix-args #:flag-config [flag-config #f]
                   #:module [module #f]
-                  #:run-mode [run-mode 'wet]
+                  #:run-mode [run-mode #f]
                   #:submod-config [submod-config #f])
   (make-fix-args (or flag-config (config-args))
                  (or module (module-args 'collection '()))
-                 run-mode
+                 (or run-mode 'wet)
                  (or submod-config (submod-args))))
+
+(module+ test
+  (test-equal? "fix-args defaults"
+               (fix-args)
+               (fix-args #:flag-config (config-args)
+                         #:module (module-args 'collection '())
+                         #:run-mode 'wet
+                         #:submod-config (submod-args))))
 
 (define (warn-args-config mod args)
   (warning-config-merge (submod-args-config mod (warn-args-submod-config args))
@@ -87,12 +96,19 @@
   (warning-config-merge (submod-args-config mod (fix-args-submod-config args))
                         (config-args->config (fix-args-flag-config args))))
 
-(define (check-kind! k)
+(define (check-kind k)
   (unless (member k (list 'file 'directory 'collection 'package))
     (raise-arguments-error
      (string->symbol (short-program+command-name))
      "expected an arg kind of file, directory, collection, or package"
      "--arg-kind" k)))
+
+(define (check-run-mode m)
+  (unless (run-mode? m)
+    (raise-arguments-error
+     (string->symbol (short-program+command-name))
+     "expected a run mode of wet or dry"
+     "--run-mode" m)))
 
 (define (parse-warn-command!)
   (define kind-param (make-parameter 'collection))
@@ -108,7 +124,7 @@
                   "One of file, directory, collection, or package"
                   "Defaults to file")
                  (define kind-sym (string->symbol kind))
-                 (check-kind! kind-sym)
+                 (check-kind kind-sym)
                  (kind-param kind-sym)]
    [("-f" "--files") ("Interpret the arguments as files"
                       "Files are required as modules and checked"
@@ -186,7 +202,7 @@
 
 (define (parse-fix-command!)
   (define kind-param (make-parameter 'collection))
-  (define run-mode-param (make-parameter 'wet))
+  (define run-mode-param (make-parameter #f))
   (define config-submod-param (make-parameter #f))
   (define config-submod-binding-param (make-parameter #f))
   (define suppressions-param (make-parameter '()))
@@ -199,7 +215,7 @@
                   "One of file, directory, collection, or package"
                   "Defaults to file")
                  (define kind-sym (string->symbol kind))
-                 (check-kind! kind-sym)
+                 (check-kind kind-sym)
                  (kind-param kind-sym)]
    [("-f" "--files") ("Interpret the arguments as files"
                       "Files are required as modules and checked"
@@ -217,9 +233,18 @@
                          "Modules in packages are recursively checked"
                          "Equivalent to \"--arg-kind package\"")
                         (kind-param 'package)]
-   #:once-each
+   #:once-any
+   ["--run-mode" mode
+                 ("How to act on fixable warnings"
+                  "One of \"dry\" or \"wet\""
+                  "Defaults to \"wet\"")
+                 (define mode-sym (string->symbol mode))
+                 (check-run-mode mode-sym)
+                 (run-mode-param mode-sym)]
    [("-D" "--dry") "Don't actually write any fixes to files"
                    (run-mode-param 'dry)]
+   [("-E" "--wet") "Write fixes to files (default behavior)"
+                   (run-mode-param 'wet)]
    #:once-each
    ["--config-submod" submod
                       ("Name of the submodule to look for warning configuration in"
@@ -262,6 +287,19 @@
                (fix-args #:module (module-args 'package
                                                (list "foo" "bar" "baz"))
                          #:run-mode 'dry))
+  (test-equal? "parse-fix-command! wet mode"
+               (parse/args "-Ep" "foo" "bar" "baz")
+               (fix-args #:module (module-args 'package
+                                               (list "foo" "bar" "baz"))
+                         #:run-mode 'wet))
+  (test-equal? "parse-fix-command! mode arg"
+               (parse/args "--run-mode" "dry" "foo" "bar")
+               (fix-args #:module (module-args 'collection
+                                               (list "foo" "bar"))
+                         #:run-mode 'dry))
+  (test-exn "parse-fix-command! bad run mode"
+            exn:fail:contract?
+            (thunk (parse/args "--run-mode" "nonsense" "foo" "bar")))
   (test-equal? "parse-fix-command! kind arg"
                (parse/args "--arg-kind" "collection" "foo" "bar")
                (fix-args #:module (module-args 'collection
