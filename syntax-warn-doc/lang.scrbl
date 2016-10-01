@@ -10,12 +10,10 @@ language that adds @warn-tech{syntax warning} wrappers around various
 forms. For example, the @racket[require] binding introduced by this
 language enforces a few "good style" practices around require clauses.
 
-@section{Warnings as a @hash-lang[]}
-
 When @racketmodname[racket/base/warn] is used as a @hash-lang[] language,
 everything from @racketmodname[racket/base] is provided. Various forms
 are adjusted to attach @warn-tech{syntax warnings} in certain cases.
-These adjustments are documented here.
+@kind-tech{Warning kinds} for these warnings are also exported.
 
 @defform[(require require-spec ...)]{
  Like in @racketmodname[racket/base], but warns @racket[require:phase-order]
@@ -24,18 +22,6 @@ These adjustments are documented here.
  first, @racket[for-template] second, @racket[for-label] third,
  @racket[for-meta] fourth, and all other forms fifth.}
 
-@section{Warnings as a module}
-
-When @racketmodname[racket/base/warn] is @racket[require]'d as a module,
-it provides warning kinds and functions for adding warnings that @hash-lang[]
-@racketmodname[racket/base/warn] uses. These are documented here.
-
 @defthing[require:phase-order warning-kind?]{
  A @kind-tech{warning kind} for when @racket[require] clauses are not
  @phase-order-tech{phase ordered}.}
-
-@defproc[(syntax-warn/require-phase-order [require-syntax syntax?]) syntax?]{
- Examines @racket[require-syntax], which is expected to be a
- @racket[(require clause ...)] syntax object, and returns it with warnings
- attached in the same way as @racket[require] does in @hash-lang[]
- @racketmodname[racket/base/warn].}
