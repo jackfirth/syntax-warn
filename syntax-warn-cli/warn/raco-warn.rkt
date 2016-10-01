@@ -10,10 +10,11 @@
          syntax/warn
          syntax/warn/private/string-lines
          syntax/warn/private/syntax-srcloc
-         "private/syntax-string.rkt"
-         "private/module.rkt"
          "private/command.rkt"
-         "private/config.rkt")
+         "private/config.rkt"
+         "private/module.rkt"
+         "private/read.rkt"
+         "private/syntax-string.rkt")
 
 (module+ test
   (require racket/port

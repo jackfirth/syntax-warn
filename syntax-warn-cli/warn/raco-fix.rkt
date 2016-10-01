@@ -10,6 +10,7 @@
          "private/command.rkt"
          "private/config.rkt"
          "private/module.rkt"
+         "private/read.rkt"
          "private/string-delta.rkt")
 
 (module+ test
