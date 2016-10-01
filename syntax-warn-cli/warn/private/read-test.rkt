@@ -1,8 +1,9 @@
 #lang racket/base
 
+;; This module is read as input for testing in another module
+
 (require (for-syntax racket/base
-                     "warn.rkt"
-                     "warn-property.rkt"))
+                     syntax/warn))
 
 (begin-for-syntax
   (define-warning-kind module-test-kind))
