@@ -26,18 +26,10 @@
   (require rackunit))
 
 
-(define (syntax->string/line-numbers stx #:indent-spaces [indent-spaces 1])
-  (add-line-numbers (syntax->string stx #:start-col 0)
-                    #:start-line (syntax-line stx)
-                    #:indent-spaces indent-spaces))
-
 (define (syntax->string stx #:start-col [start-col #f])
   (cond [(syntax-list? stx)
          (syntax-list->string stx #:start-col start-col)]
         [else (literal->string stx #:start-col start-col)]))
-
-(define (syntax-list? stx)
-  (not (not (syntax->list stx))))
 
 (define (literal->string stx #:start-col [start-col #f])
   (string-append
@@ -69,40 +61,6 @@
                  (complete-srcloc-line-end part-loc)))
        (write-string ")"))))
 
-(define (add-line-numbers str
-                          #:start-line [start-line 1]
-                          #:indent-spaces [indent-spaces 1])
-  (define lines
-    (string-split str "\n" #:trim? #f #:repeat? #t))
-  (define max-line-digits
-    (num-digits (+ start-line (length lines))))
-  (define (format-line line n)
-    (string-append (~a n #:min-width max-line-digits)
-                   (make-string indent-spaces #\space)
-                   line))
-  (string-join
-   (for/list ([line lines]
-              [n (in-naturals start-line)])
-     (format-line line n))
-   "\n"))
-
-(define (num-digits n)
-  (string-length (~a n)))
-
-(define (write-char chr n)
-  (void (write-string (make-string n chr))))
-
-(define/contract (write-spaces n)
-  (-> exact-nonnegative-integer? void?)
-  (write-char #\space n))
-
-(define/contract (write-newlines n)
-  (-> exact-nonnegative-integer? void?)
-  (write-char #\newline n))
-
-(define-syntax-rule (with-output-to-string* body ...)
-  (with-output-to-string (thunk body ...)))
-
 (module+ test
   (define test-stx
     #'(  require foo
@@ -111,6 +69,61 @@
                     )
                bork   fork))
   (check-equal? (syntax->string test-stx)
-                "(  require foo\n         bar\n                 (baz   blah)\n\n               bork   fork)")
+                "(  require foo
+         bar
+                 (baz   blah)
+
+               bork   fork)")
   (check-equal? (syntax->string test-stx #:start-col 0)
-                "      (  require foo\n         bar\n                 (baz   blah)\n\n               bork   fork)"))
+                "      (  require foo
+         bar\n                 (baz   blah)
+
+               bork   fork)"))
+
+(define (syntax->string/line-numbers stx #:indent-spaces [indent-spaces 1])
+  (add-line-numbers (syntax->string stx #:start-col 0)
+                    #:start-line (syntax-line stx)
+                    #:indent-spaces indent-spaces))
+
+(define (add-line-numbers str
+                          #:start-line [start-line 1]
+                          #:indent-spaces [indent-spaces 1])
+  (define lines
+    (string-split str "\n" #:trim? #f #:repeat? #t))
+  (define max-line-digits
+    (num-digits (+ start-line (length lines))))
+  (define (format-line line n)
+    (string-append (~a n #:align 'right #:min-width max-line-digits)
+                   (make-string indent-spaces #\space)
+                   line))
+  (string-join
+   (for/list ([line lines]
+              [n (in-naturals start-line)])
+     (format-line line n))
+   "\n"))
+
+(module+ test
+  (check-equal? (add-line-numbers "foo\nbar\nbaz")
+                "1 foo\n2 bar\n3 baz")
+  (check-equal? (add-line-numbers "foo\nbar\nbaz"
+                                  #:start-line 4
+                                  #:indent-spaces 3)
+                "4   foo\n5   bar\n6   baz")
+  (check-equal? (add-line-numbers "foo\nbar\nbaz" #:start-line 9)
+                " 9 foo\n10 bar\n11 baz"))
+
+(define (syntax-list? stx) (not (not (syntax->list stx))))
+(define (num-digits n) (string-length (~a n)))
+
+(define (write-char chr n)
+  (void (write-string (make-string n chr))))
+
+(define (write-spaces n) (write-char #\space n))
+(define (write-newlines n) (write-char #\newline n))
+
+(define-syntax-rule (with-output-to-string* body ...)
+  (with-output-to-string (thunk body ...)))
+
+(module+ test
+  (check-equal? (with-output-to-string* (write-spaces 3)) "   ")
+  (check-equal? (with-output-to-string* (write-newlines 2)) "\n\n"))
