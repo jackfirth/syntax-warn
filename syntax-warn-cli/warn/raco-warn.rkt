@@ -1,6 +1,7 @@
 #lang racket/base
 
-(require racket/list
+(require racket/format
+         racket/list
          racket/string
          syntax/warn
          syntax/warn/private/string-lines
@@ -15,62 +16,99 @@
            syntax/warn/private/rackunit-string))
 
 
-(define (list/filter . vs)
-  (filter values vs))
+(module+ test
+  (define-warning-kind raco-test-kind))
+
+(struct error-message-field (name value detailed?)
+  #:constructor-name make-error-message-field
+  #:omit-define-syntaxes
+  #:transparent)
+
+(define (error-message-field name value #:detailed? [detailed? #f])
+  (make-error-message-field name value detailed?))
+
+(define (error-message-field->string field)
+  (define name (error-message-field-name field))
+  (define value (error-message-field-value field))
+  (define detailed? (error-message-field-detailed? field))
+  (if detailed?
+      (format "  ~a:\n   ~a" name (string-replace (~a value) "\n" "\n   "))
+      (format "  ~a: ~a" name value)))
+  
+(define (error-message message
+                       #:file [file #f]
+                       #:line [line #f]
+                       #:column [column #f]
+                       #:err-source [err-source #f]
+                       . fields)
+  (define loc-pieces (list/filter file line column))
+  (define loc (and (not (empty? loc-pieces))
+                   (string-join (map ~a loc-pieces) ":")))
+  (define message-line
+    (string-join (list/filter loc err-source message) ": "))
+  (define field-strs (map error-message-field->string fields))
+  (string-join (cons message-line field-strs) "\n"))
+
+(define (list/filter . vs) (filter values vs))
 
 (define (format-warning warning)
-  (define message (syntax-warning-message warning))
   (define stx (syntax-warning-stx warning))
   (define fix (syntax-warning-fix warning))
-  (define kind (syntax-warning-kind warning))
-  (define kind-prefix
-    (and kind (format "[~a]" (warning-kind-name kind))))
-  (define message-part
-    (string-join (list/filter kind-prefix message)))
-  (define warning-part
-    (string-indent-lines (syntax->string/line-numbers stx) 2))
-  (define fix-part/noindent
-    (and fix
-         (string-append "suggested fix:\n\n"
-                        (syntax->string/line-numbers fix))))
-  (define fix-part
-    (and fix-part/noindent
-         (string-indent-lines fix-part/noindent 2)))
-  (string-join (list/filter message-part warning-part fix-part)
-               "\n\n" #:after-last "\n"))
+  (define fields
+    (list/filter (error-message-field 'source
+                                      (syntax->string/line-numbers stx)
+                                      #:detailed? #t)
+                 (and fix
+                      (error-message-field '|suggested fix|
+                                           (syntax->string/line-numbers fix)
+                                           #:detailed? #t))))
+  (define kind-source
+    (symbol->string (warning-kind-name (syntax-warning-kind warning))))
+  (apply error-message
+         (syntax-warning-message warning)
+         #:file (syntax-source stx)
+         #:line (syntax-line stx)
+         #:column (syntax-column stx)
+         #:err-source kind-source
+         fields))
 
 (module+ test
-  (define-warning-kind raco-test-kind)
-  (test-case "Formatted warning without a suggested fix"
-    (define formatted-warning
-      (format-warning
-       (syntax-warning #:message "not there"
-                       #:kind raco-test-kind
-                       #:stx #'here)))
-    (check-string-contains-all? formatted-warning
-                                (list "not there"
-                                      "here"
-                                      "[raco-test-kind]"))
-    (check-string-has-trailing-newline? formatted-warning))
-  (test-case "Formatted warning with a suggested fix"
-    (define test-stx #'foo)
-    (define test-stx/fix
-      (datum->syntax test-stx 'bar test-stx test-stx))
-    (define warning/fix
-      (syntax-warning #:message "use a different name"
-                      #:kind raco-test-kind
-                      #:stx test-stx
-                      #:fix test-stx/fix))
-    (define expected-message-strings
-      (list "use a different name"
-            "foo"
-            "suggested fix:"
-            "bar"))
-    (check-string-contains-all? (format-warning warning/fix)
-                                expected-message-strings)))
+  (test-case "format-warning"
+    (define test-stx
+      (datum->syntax #'here
+                     'foo
+                     (list "/some/path/to/a/module.rkt"
+                           8 ; line
+                           3 ; column
+                           123 ; position
+                           3))) ; span
+    (test-case "without a suggested fix"
+      (define test-warning
+        (syntax-warning #:message "not there"
+                        #:kind raco-test-kind
+                        #:stx test-stx))
+      (check-equal? (format-warning test-warning)
+                    "\
+/some/path/to/a/module.rkt:8:3: raco-test-kind: not there
+  source:
+   8    foo"))
+    (test-case "with a suggested fix"
+      (define test-warning
+        (syntax-warning #:message "not there"
+                        #:kind raco-test-kind
+                        #:stx test-stx
+                        #:fix (datum->syntax test-stx 'bar test-stx)))
+      (check-equal? (format-warning test-warning)
+                    "\
+/some/path/to/a/module.rkt:8:3: raco-test-kind: not there
+  source:
+   8    foo
+  suggested fix:
+   8    bar"))))
 
 (define (print-warning warning)
   (printf (format-warning warning))
+  (newline)
   (flush-output))
 
 (define (warn-modules resolved-module-paths warn-args)
@@ -85,9 +123,7 @@
       (warn-args-config modpath warn-args))
     (define warnings (filter-unsuppressed-warnings all-warnings config))
     (when (not (empty? warnings))
-      (define warning-strs (map format-warning warnings))
-      (write-string
-       (string-join warning-strs "\n" #:before-first "\n" #:after-last "\n"))
+      (for-each print-warning warnings)
       (set-box! any-warned? #t)))
   (unbox any-warned?))
 
