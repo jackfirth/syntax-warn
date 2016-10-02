@@ -1,15 +1,9 @@
 #lang racket/base
 
-(require racket/cmdline
-         racket/function
-         racket/list
-         racket/match
+(require racket/list
          racket/string
-         raco/command-name
-         syntax/modread
          syntax/warn
          syntax/warn/private/string-lines
-         syntax/warn/private/syntax-srcloc
          "private/command.rkt"
          "private/config.rkt"
          "private/module.rkt"
@@ -17,18 +11,9 @@
          "private/syntax-string.rkt")
 
 (module+ test
-  (require racket/port
-           rackunit
+  (require rackunit
            syntax/warn/private/rackunit-string))
 
-
-(define (separator-format sep width)
-  (define separator (make-string width sep))
-  (string-append-lines separator "~a" separator ""))
-
-(module+ test
-  (check-equal? (separator-format #\X 4)
-                "XXXX\n~a\nXXXX\n"))
 
 (define (list/filter . vs)
   (filter values vs))
